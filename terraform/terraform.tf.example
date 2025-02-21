@@ -1,7 +1,7 @@
 terraform {
   backend "s3" {
     bucket  = "podaac-migration-tf-state"
-    key     = "podaac-provider-s3-tagging/${var.stage}/terraform.tfstate"
+    key     = "podaac-provider-s3-tagging/${var.prefix}/terraform.tfstate"
     region  = "us-west-2"
     profile = "default" # AWS Profile
   }

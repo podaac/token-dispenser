@@ -1,5 +1,5 @@
 resource "aws_dynamodb_table" "launchpad_token_dispenser_cache_table" {
-  name           = "${var.stage}-LaunchpadTokenDispenserCacheTable"           # Name of the DynamoDB table
+  name           = "${var.prefix}-LaunchpadTokenDispenserCacheTable"           # Name of the DynamoDB table
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "client_id"                                # On-demand billing mode (no need to specify capacity)
 
@@ -12,11 +12,6 @@ resource "aws_dynamodb_table" "launchpad_token_dispenser_cache_table" {
   ttl {
     attribute_name = "time_to_live"
     enabled        = true
-  }
-
-  lifecycle {
-    prevent_destroy = false
-    ignore_changes  = [ name ]
   }
 
   tags = local.default_tags

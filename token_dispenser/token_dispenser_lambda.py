@@ -1,15 +1,15 @@
 from cryptography.hazmat.primitives.serialization.pkcs12 import load_key_and_certificates
 from cryptography.hazmat.backends import default_backend
 
-from token_dispenser.aws.s3 import S3
-from token_dispenser.aws.secret_manager import SecretManager
-from token_dispenser.aws.launchpad_token import LaunchpadToken
+from token_dispenser.aws.s3 import download_s3_file
+from token_dispenser.aws.secret_manager import get_secret_value
+from token_dispenser.aws.launchpad_token import get_token
 import token_dispenser.configuration as config
-from token_dispenser.repository.client_token import put_token, get_token_by_client_id
-from token_dispenser.repository.client_token import ClientTokens
+from token_dispenser.repository.token_repo import put_token, get_token_by_client_id
 from token_dispenser.logger import TokenDispenserLogger
 import json
 import logging
+from logging_config import configure_logger
 import time
 
 def decode_pkcs12(p12_file_path, password: str=None):
@@ -34,38 +34,34 @@ def decode_pkcs12(p12_file_path, password: str=None):
 
 def get_new_token(client_id:str):
     """
-    Decodes a PKCS#12 file to extract the private key, certificate, and additional certificates.
+    obtain a new token based on client_id and write the newly obtained token into DynamoDB
 
     :param client_id: a required field which is used as key to cache the token in dynamoDB.
     :return: a json object containing the token data.
     """
     try:
         logger = TokenDispenserLogger.get_logger()
-        secret_manager_util = SecretManager()
-        # p12_file = secret_manager_util.get_secret_binary(config.LAUNCHPAD_PFX_BINARY_SECRET_KEY)
-        s3_util = S3()
-        p12_file = s3_util.download_s3_file(bucket_name=config.LAUNCHPAD_PFX_FILE_S3_BUCKET,
+        p12_file = download_s3_file(bucket_name=config.LAUNCHPAD_PFX_FILE_S3_BUCKET,
                                             key=config.LAUNCHPAD_PFX_FILE_S3_KEY, local_storage_dir='/tmp')
         logger.info(f"p12 file downloaded from s3 successfully to: {p12_file}")
-        password = secret_manager_util.get_secret_value(config.LAUNCHPAD_PFX_PASSWORD_SECRET_ID)
+        password = get_secret_value(config.LAUNCHPAD_PFX_PASSWORD_SECRET_ARN)
         private_key, cert, additional_certs = decode_pkcs12(p12_file, password)
         logger.info(f"cert files decoded successfully")
         # Create launchpad token
-        launchpad_token_util = LaunchpadToken()
-        token_json = launchpad_token_util.get_token(url=config.LAUNCHPAD_GETTOKEN_URL, private_key=private_key,
+        token_json = get_token(url=config.LAUNCHPAD_GETTOKEN_URL, private_key=private_key,
                                                         certificate=cert)
         # Add created_at and expires_at fields into the token_structure before putting into dynamoDB
         current_time:int=int(time.time())
         token_json['expires_at'] = current_time + int(token_json['session_maxtimeout'])
         token_json['created_at'] = current_time
-        put_token(client_id, json.dumps(token_json), (time.time() + config.CLIENT_EXPIRATION_TIME))
+        put_token(client_id, json.dumps(token_json), token_json['expires_at'])
         return token_json
     except Exception as e:
-        print(f"Failed on launchpad token process: {e}")
+        print(f"Failed on get_new_token process: {e}")
         raise e
 
 
-def satisfy_minimum_alive_secs(token_json:json, minimum_alive_secs:int | None) -> bool:
+def satisfy_minimum_alive_secs(token_json:json, minimum_alive_secs:int) -> bool:
     # if the minimum_alive_sec is not provided by requester or value less than 0
     # it means the request does not care so we will assume whatever cached is ok
     if minimum_alive_secs is None or minimum_alive_secs <= 0:
@@ -93,6 +89,11 @@ def is_minimum_alive_secs_valid(minimum_alive_secs:int or None) -> bool :
         return True
 
 def handler(event, context):
+    # Set the logging level dynamically
+    log_level = getattr(logging, config.LOG_LEVEL, logging.INFO)
+    # Reconfigure the logger with the new log level
+    log_adapter = configure_logger(log_level, client_id='11223344')
+
     logging.getLogger().setLevel(logging.INFO)
     logging.info('Lambda handler received event %s', event)
     client_id = event.get('client_id', '')
@@ -113,8 +114,12 @@ def handler(event, context):
     # minimum_alive_secs:int|None = int(json.loads(event['body'])['minimum_alive_secs'])
     logger = TokenDispenserLogger.get_instance(client_id=client_id)
     logger.info(f"client_id with context: {context}")
-    ClientTokens.Meta.table_name = config.DYNAMO_DB_CACHE_TABLE_NAME
-    ClientTokens.Meta.region = config.AWS_REGION
+    # TODO : Use new client
+    # client_token = ClientTokens2(config.DYNAMO_DB_CACHE_TABLE_NAME, config.AWS_REGION)
+
+
+    # ClientTokens.Meta.table_name = config.DYNAMO_DB_CACHE_TABLE_NAME
+    # ClientTokens.Meta.region = config.AWS_REGION
     logger.info(f"dynamoDB region: {config.AWS_REGION}")
     logger.info(f"dynamoDB table name: {config.DYNAMO_DB_CACHE_TABLE_NAME}")
     logger.info("Starting token process")
@@ -155,7 +160,3 @@ def handler(event, context):
     except Exception as e:
         logger.error(f"Error processing client_token: {str(e)}")
         raise e
-        # return {
-        #     "statusCode": 500,
-        #     "body": json.dumps({"error": f"Failed to process client token. exception: {str(e)}"})
-        # }

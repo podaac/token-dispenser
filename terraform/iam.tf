@@ -1,4 +1,4 @@
-data "aws_iam_policy_document" "launchpad-token-dispenser_lambda_assume_role_policy" {
+data "aws_iam_policy_document" "launchpad_token_dispenser_lambda_assume_role_policy" {
   statement {
     principals {
       type        = "Service"
@@ -9,10 +9,9 @@ data "aws_iam_policy_document" "launchpad-token-dispenser_lambda_assume_role_pol
 }
 
 resource "aws_iam_role" "launchpad_token_dispenser_lambda_role" {
-  name                 = "${local.prefix}-launchpad_token_dispenser_lambda-processing"
-  assume_role_policy   = data.aws_iam_policy_document.launchpad-token-dispenser_lambda_assume_role_policy.json
-  permissions_boundary = var.permissions_boundary_arn
-  tags                 = local.default_tags
+  name                 = "${local.prefix}_launchpad_token_dispenser_lambda_processing"
+  assume_role_policy   = data.aws_iam_policy_document.launchpad_token_dispenser_lambda_assume_role_policy.json
+  permissions_boundary = "arn:aws:iam::${local.account_id}:policy/NGAPShRoleBoundary"
 }
 
 data "aws_iam_policy_document" "launchpad_token_dispenser_lambda_processing_policy" {
@@ -24,7 +23,7 @@ data "aws_iam_policy_document" "launchpad_token_dispenser_lambda_processing_poli
       "logs:DescribeLogStreams",
       "logs:PutLogEvents"
     ]
-    resources = ["*"]
+    resources = [aws_cloudwatch_log_group.launchpad_token_dispenser_lambda_log_group.arn ]
   }
 
   statement {
@@ -78,16 +77,18 @@ data "aws_iam_policy_document" "launchpad_token_dispenser_lambda_processing_poli
     sid       = "AllowReadAccessToLaunchpadPfxBucket"
     actions   = [
       "s3:GetObject",
-      "s3:ListBucket"]
+      "s3:ListBucket"
+    ]
     resources = [
       "arn:aws:s3:::${var.launchpad_pfx_file_s3_bucket}",
-      "arn:aws:s3:::${var.launchpad_pfx_file_s3_bucket}/*"]
+      "arn:aws:s3:::${var.launchpad_pfx_file_s3_bucket}/*"
+    ]
   }
 }
 
 # This role policy resource is to "glue" the iam role with a policy
- resource "aws_iam_role_policy" "launchpad-token-dispenser_lambda_processing" {
-  name   = "${local.prefix}_launchpad-token-dispenser_lambda_processing_policy"
+ resource "aws_iam_role_policy" "launchpad_token_dispenser_lambda_processing" {
+  name   = "${local.prefix}_launchpad_token_dispenser_lambda_processing_policy"
   role   = aws_iam_role.launchpad_token_dispenser_lambda_role.id
   policy = data.aws_iam_policy_document.launchpad_token_dispenser_lambda_processing_policy.json
 }

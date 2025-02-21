@@ -1,5 +1,5 @@
 # launchpad-token-dispenser
-    This project aims to create a centralized token dispenser lambda function. Any application requiring access to 
+    This project aims to create a centralized Token Dispenser Service (TDS) lambda function. Any application requiring access to 
 a launchpad token can call this lambda with input parameters and receive a response containing the launchpad token, 
 its creation time, and expiration time (all in EPOCH format).
 
@@ -21,14 +21,14 @@ https://docs.aws.amazon.com/awscloudtrail/latest/userguide/monitor-cloudtrail-lo
 # Functionality
 
 ## client_id and minimum_alive_secs
-This project deploys a Launchpad Token Dispenser (LTD) lambda accessible through two parameters:
+This project deploys a Launchpad Token Dispenser Service (TDS) lambda accessible through two parameters:
 
 * client_id: Required field, alphanumeric type (English letters and numbers only). Hyphens (-) are not allowed, 
 as they will cause input validation errors (e.g., "myID-123" will fail).
 * minimum_alive_secs (Optional): Numeric field (integer or long without decimals).
 
-The client_id field allows the LTD lambda to cache tokens. When a subsequent request arrives with the same client_id, 
-the LTD lambda attempts to retrieve the cached token value from its persistent layer (DynamoDB).
+The client_id field allows the TDS lambda to cache tokens. When a subsequent request arrives with the same client_id, 
+the TDS lambda attempts to retrieve the cached token value from its persistent layer (DynamoDB).
     
 Example of Cached Token JSON Structure (all times in Unix EPOCH format):
 ```aiignore
@@ -47,7 +47,7 @@ Example of Cached Token JSON Structure (all times in Unix EPOCH format):
 }
 
 ```
-The minimum_alive_secs field is used by the LTD lambda to verify if the difference between expires_at and the current time 
+The minimum_alive_secs field is used by the TDS lambda to verify if the difference between expires_at and the current time 
 is greater than minimum_alive_secs. If true, the cached token is returned. Otherwise, a new token is generated, 
 sent to the requester, and the cache is refreshed.
 
@@ -77,7 +77,7 @@ by removing stale entries.
 #  Installation
 The installation steps involved
 * Downloading the lambda artifact and placing it under the $PROJECT_ROOT/dist directory.
-* Creating a tfvars file or using `TF_VAR
+* Creating a tfvars file or using `TF_VAR`
 * Place launchpad.pfx file on s3 bucket
 * Setup launchpad.pfx passphrase on secretmanager
 * Terraform apply to deploy the project
@@ -100,23 +100,19 @@ This section outlines the necessary Terraform variables. Users can manage these 
 **Creating a prefix.tfvars file.
 **Utilizing environment variables in the format TF_VAR_<variable_name>.
 
-| config key                                       | description                                                                                                                         |
-|--------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
-| `stage`                                          | prefix of lambda. If intent to deploy one TDL per env, suggested to set it as sndbx/sit/uat or ops based on the running environment |
-| `region`                                         | AWS region.  Ex. us-wet-2                                                                                                           |
-| `credentials`                                    | full path of credential file. Ex. /User/Mynam/.aws/credentials                                                                      |
-| `profile`                                        | Name of the AWS profile from the credentials file                                                                                   |
-| `log_retention_days`                             | Number of days where TDL lambda will be retained                                                                                    |
-| `permissions_boundary_arn`                       | Lambda permission boundary ARN                                                                                                      |
-| `launchpad_gettoken_url`                         | Launchpad application /gettoken URL                                                                                                 |
-| `launchpad_pfx_password_secret_id`               | the Id of the secret where launchpad pfx password is stored.                                                                        |
-| `launchpad_pfx_passcode_secret_arn`              | the ARN of the secret where launchpad pfx password is stored.                                                                       |
-| `launchpad_pfx_file_s3_bucket`                   | S3 bucket where launchpad.pfx file is stored. Ex. my-internal-bucket                                                                |
-| `launchpad_pfx_file_s3_key`                      | S3 key where launchpad.pfx file is stored. Ex. my-prefix/crypto/launchpad.pfx                                                       |
-| `launchpad_token_dispenser_lambda_timeout`       | TDL lambda timeout                                                                                                                  |
-| `launchpad_token_dispenser_lambda_memory_size`   | TDL lambda memory size                                                                                                              |
-| `launchpad_token_dispenser_lambda_architectures` | TDL lambda running architecture.  Current set to x86.  ARM is not tested.                                                           |
-| `client_expiration_secon`                        | A number of seconds when a client's (based on client_id) cached token is permanently purged from dynamoDB                           |
+| config key                                 | description                                                                                                                         |
+|--------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| `prefix`                                   | prefix of lambda. If intent to deploy one TDS per env, suggested to set it as sndbx/sit/uat or ops based on the running environment |
+| `credentials`                              | full path of credential file. Ex. /User/Mynam/.aws/credentials                                                                      |
+| `profile`                                  | Name of the AWS profile from the credentials file                                                                                   |
+| `log_retention_days`                       | Number of days where TDS lambda will be retained                                                                                    |
+| `permissions_boundary_arn`                 | Lambda permission boundary ARN                                                                                                      |
+| `launchpad_gettoken_url`                   | Launchpad application /gettoken URL                                                                                                 |
+| `launchpad_pfx_passcode_secret_arn`        | the ARN of the secret where launchpad pfx password is stored.                                                                       |
+| `launchpad_pfx_file_s3_bucket`             | S3 bucket where launchpad.pfx file is stored. Ex. my-internal-bucket                                                                |
+| `launchpad_pfx_file_s3_key`                | S3 key where launchpad.pfx file is stored. Ex. my-prefix/crypto/launchpad.pfx                                                       |
+| `launchpad_token_dispenser_lambda_timeout` | TDS lambda timeout                                                                                                                  |
+| `client_expiration_secon`                  | A number of seconds when a client's (based on client_id) cached token is permanently purged from dynamoDB                           |
 
 ## Place launchpad.pfx file on s3 bucket
 This document does not cover the specifics of launchpad token management, such as how to obtain or manage launchpad.pfx certificates.
@@ -155,7 +151,7 @@ Locate the "mysecrete1" secret and retrieve its ARN.
 
 Set this ARN to the launchpad_pfx_password_secret_arn variable in your tfvars file.
 
-This configuration grants the LTD Lambda function the necessary permissions to read only the secret containing the launchpad.pfx passphrase.
+This configuration grants the TDS the necessary permissions to read only the secret containing the launchpad.pfx passphrase.
 
 Reference documents:
 generic document : https://docs.aws.amazon.com/cli/latest/reference/secretsmanager/put-secret-value.html
@@ -169,7 +165,7 @@ To deploy this project using Terraform, follow these steps:
 * Execute Terraform commands: Once the configuration files are set up, use the Terraform CLI to execute the deployment process. Refer to the Terraform documentation for specific commands (e.g., terraform init, terraform plan, terraform apply).
 
 ### Configure tfstate file
-The $PROJECT_ROOT/backend directory contains sample venue.tf files being used to configure where the TDL project's tfstate file will be located.
+The $PROJECT_ROOT/backend directory contains sample venue.tf files being used to configure where the TDS project's tfstate file will be located.
 Ex.
 ```aiignore
 bucket         = "my-cumulus-tf-state"
@@ -186,10 +182,9 @@ Download build artifact from release page, rename it to token-dispenser_lambda.z
 ## Configure tfvars file
 Example:
 ```aiignore
-stage = "sndbx"
+prefix = "sndbx"
 log_retention_days = 14
 permissions_boundary_arn ="arn:aws:iam::06xxxxxxxxx:policy/XXXXXRoleBoundary"
-launchpad_pfx_password_secret_id="prefix-message-template-launchpad-passphrase0000000000000"
 launchpad_pfx_passcode_secret_arn = "arn:aws:secretsmanager:us-west-2:06xxxxxxxxx:secret:prefix-message-template-launchpad-passphrase0000000000000-SolCpg"
 # The bucket where launchpad.pfx is stored. Ex. my-sndbx-bucket
 launchpad_pfx_file_s3_bucket="my-bucket-internal"
@@ -197,7 +192,7 @@ launchpad_pfx_file_s3_bucket="my-bucket-internal"
 launchpad_pfx_file_s3_key="my-prefix/crypto/launchpad.pfx"
 ```
 
-## Terraform based Deployment
+## Terraform based Deployment Command Examples
 Assuming build artifact is downloaded and placed in $PROJECT_ROOT/dist/token-dispenser_lambda.zip
 
 Tested with Terraform release 1.10.4. Example below assumes terraform executable file is named terraform
