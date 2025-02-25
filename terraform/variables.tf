@@ -3,21 +3,6 @@ variable "default_tags" {
   default = {}
 }
 
-
-##################################################################
-# The arn of response sns where CNMResponse lambda shall publish
-# messages into
-##################################################################
-
-variable "credentials" {
-  default = "~/.aws/credentials"
-}
-
-# AWS profile name
-variable "profile" {
-  type = string
-}
-
 # sndbx, sit, uat, ops or any user defined prefix
 variable "prefix" {
   type = string
@@ -39,6 +24,17 @@ variable "launchpad_token_dispenser_lambda_memory_size" {
   default = 128
 }
 
+# While client making request to the Token Dispenser Server (TDS) lambda, a client_id and minimum_alive_secs are
+# passed in. If token is cached within dynamoDB and the token is expiring longer than the minimum_alive_secs, then
+# just return the cached token. Otherwise, request new token and cache the newly obtained token to dynamoDB
+# Developer could choose to overwrite this number but please be noted that if this number is too large (or too close to
+# the current token alive time (which is 60 mins), than it will cause frequent token refresh
+variable "minimum_alive_secs" {
+  description = "The token must be alive at least minimum_alive_sec, otherwise get new token"
+  type        = number
+  default     = 300
+}
+
 variable "log_retention_days" {
   type    = number
   default = 14
@@ -47,13 +43,11 @@ variable "log_retention_days" {
 variable "log_level" {
   description = "The log level to be used."
   type        = string
-
   validation {
     condition     = contains(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], var.log_level)
     error_message = "The log level must be one of 'DEBUG', 'INFO', 'WARNING', 'ERROR' or 'CRITICAL'."
   }
-
-  default = "INFO"
+  default = "DEBUG"
 }
 
 variable "launchpad_gettoken_url" {
@@ -70,11 +64,3 @@ variable "launchpad_pfx_file_s3_key" {}
 # The ARN of the secret storing pfx passcode
 variable "launchpad_pfx_passcode_secret_arn" {}
 
-# DynamoDB configuration
-# the requester for token dispenser lambda will provide a client_id as input.  By using the client_id,
-# token is cached in dynamoDB.  This value indicates
-# how long the client_id entry will be kept before deletion, in unix EPOCH format. default = 3 days
-variable "client_expiration_seconds" {
-  type    = number
-  default = 259200
-}

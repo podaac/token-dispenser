@@ -3,8 +3,9 @@ import boto3
 from botocore.exceptions import ClientError
 import token_dispenser.configuration as configuration
 # Initialize the DynamoDB resource
-dynamodb = boto3.resource("dynamodb", region_name=configuration.AWS_REGION)
+dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.getenv('DYNAMO_DB_CACHE_TABLE_NAME'))
+
 
 def get_token_by_client_id(client_id:str):
     """

@@ -24,7 +24,8 @@ https://docs.aws.amazon.com/awscloudtrail/latest/userguide/monitor-cloudtrail-lo
 This project deploys a Launchpad Token Dispenser Service (TDS) lambda accessible through two parameters:
 
 * client_id: Required field, alphanumeric type (English letters and numbers only). Hyphens (-) are not allowed, 
-as they will cause input validation errors (e.g., "myID-123" will fail).
+as they will cause input validation errors (e.g., "myID-123" will fail). IN more details, the program is validating
+the input with regrex : re.compile(r'^[a-zA-Z0-9]{3,32}$')  minimum 3 , max 32 characters
 * minimum_alive_secs (Optional): Numeric field (integer or long without decimals).
 
 The client_id field allows the TDS lambda to cache tokens. When a subsequent request arrives with the same client_id, 
@@ -69,10 +70,6 @@ If minimum_alive_secs is not provided in the request, a cached token will be ret
 Since launchpad tokens expire after 3600 seconds (1 hour), setting minimum_alive_secs close to 0 will cause 
 frequent token refreshes, potentially overloading the launchpad application.
 
-## CLIENT_EXPIRATION_TIME
-The CLIENT_EXPIRATION_TIME Terraform variable specifies the number of seconds until a cached entry is permanently 
-removed from DynamoDB due to inactivity. This variable helps maintain a clean and uncluttered persistent layer (DynamoDB) 
-by removing stale entries.
 # 
 #  Installation
 The installation steps involved
@@ -112,6 +109,7 @@ This section outlines the necessary Terraform variables. Users can manage these 
 | `launchpad_pfx_file_s3_bucket`             | S3 bucket where launchpad.pfx file is stored. Ex. my-internal-bucket                                                                |
 | `launchpad_pfx_file_s3_key`                | S3 key where launchpad.pfx file is stored. Ex. my-prefix/crypto/launchpad.pfx                                                       |
 | `launchpad_token_dispenser_lambda_timeout` | TDS lambda timeout                                                                                                                  |
+| `minimum_alive_secs`                       | if client passed in minimum_alive_secs greater than this, than error out                                                            |
 | `client_expiration_secon`                  | A number of seconds when a client's (based on client_id) cached token is permanently purged from dynamoDB                           |
 
 ## Place launchpad.pfx file on s3 bucket
@@ -196,7 +194,9 @@ launchpad_pfx_file_s3_key="my-prefix/crypto/launchpad.pfx"
 Assuming build artifact is downloaded and placed in $PROJECT_ROOT/dist/token-dispenser_lambda.zip
 
 Tested with Terraform release 1.10.4. Example below assumes terraform executable file is named terraform
-
+export AWS_SHARED_CREDENTIALS_FILE=~/.aws/credentials
+export AWS_PROFILE=your-profile-name
+export AWS_REGION=us-west-2
 terraform init --backend-config=backends/sndbx.tf -reconfigure -backend-config="profile=my-profile"
 terraform plan -var-file=tfvars/sndbx.tfvars -var="credentials=~/.aws/credentials" -var="profile=my-profile"
 terraform apply -var-file=tfvars/sndbx.tfvars -auto-approve -var="credentials=~/.aws/credentials" -var="profile=my-profile"
@@ -218,5 +218,5 @@ terraform apply -var-file=tfvars/sndbx.tfvars -auto-approve -var="credentials=~/
   poetry install
   cp -R token_dispenser venv/*/lib/*/site-packages/
   chmod -R 775 venv/*/lib/*/site-packages/
-  cd env/*/lib/*/site-packages/; zip ../artifact.zip .
+  cd env/*/lib/*/site-packages/; zip -r ../artifact.zip .
   ```

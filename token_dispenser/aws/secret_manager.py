@@ -1,6 +1,7 @@
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
+from token_dispenser.logging_config import shared_logger
 # Create a Secrets Manager client
 client = boto3.client('secretsmanager')
 
@@ -19,6 +20,7 @@ def get_secret_value(secret_id_or_arn: str) -> str:
         Exception: If the secret cannot be retrieved.
     """
     try:
+        shared_logger().debug('Retrieving secret value from AWS Secrets Manager.')
         # Retrieve the secret value
         response = client.get_secret_value(SecretId=secret_id_or_arn)
         # Check if the secret is stored as a string

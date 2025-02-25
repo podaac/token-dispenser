@@ -3,8 +3,8 @@ import json
 from tempfile import NamedTemporaryFile
 import time
 import requests
-import logging
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
+from token_dispenser.logging_config import shared_logger
 
 def get_token(url:str, private_key, certificate):
     """
@@ -16,8 +16,9 @@ def get_token(url:str, private_key, certificate):
 
     :return: The token response as a string.
     """
+    log_adapter = shared_logger()
     try:
-        logging.debug(f"entered get_token")
+        log_adapter.debug(f"entered get_token")
         # Serialize private key and certificate into PEM format
         private_key_pem = private_key.private_bytes(
             encoding=Encoding.PEM,
@@ -34,7 +35,7 @@ def get_token(url:str, private_key, certificate):
             pem_file.write(private_key_pem.encode('utf-8'))
             pem_file.write(certificate_pem.encode('utf-8'))
             pem_file.flush()
-            logging.info("certificate pem and private combination created. Preparing for /gettoken call")
+            log_adapter.info('certificate pem and private combination created. Preparing for /gettoken call')
             response = requests.get(
                 url,
                 cert=pem_file.name,
@@ -42,7 +43,7 @@ def get_token(url:str, private_key, certificate):
             )
             # Check if the request was successful
             if response.status_code == 200:
-                logging.info("Successfully obtained token.")
+                log_adapter.info("Successfully obtained token.")
                 content_str: str = response.content.decode('utf-8')
                 # Parse the string into a JSON object
                 json_data = json.loads(content_str)
@@ -51,8 +52,8 @@ def get_token(url:str, private_key, certificate):
                 json_data['created_at'] = current_time
                 return json_data
             else:
-                logging.info("launchpad /gettoken call failed")
+                log_adapter.info("launchpad /gettoken call failed")
                 return f"Failed to obtain token. HTTP Status: {response.status_code}, Response: {response.text}"
     except Exception as e:
-        logging.info(f"get_token error occurred: {str(e)}")
+        log_adapter.error(f"get_token error occurred: {str(e)}")
         raise e

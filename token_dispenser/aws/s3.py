@@ -1,13 +1,10 @@
 import boto3
 import os
 import logging
-from token_dispenser.logging_config import configure_logger
-from token_dispenser import logging_config
-
-from token_dispenser.logger import TokenDispenserLogger
+from token_dispenser.logging_config import shared_logger
 # Initialize the S3 client
 s3 = boto3.client('s3')
-log_adapter = logging_config.get_logger_adapter()
+
 def download_s3_file(bucket_name: str, key: str, local_storage_dir: str) ->str:
     """
     Download a file from an S3 bucket to a local directory.
@@ -16,7 +13,7 @@ def download_s3_file(bucket_name: str, key: str, local_storage_dir: str) ->str:
     :param key: Key of the file in the S3 bucket
     :param local_storage_dir: Local directory to save the downloaded file
     """
-    # Ensure the local directory exists
+    log_adapter = shared_logger()
     log_adapter.info('Downloading file from S3 bucket %s', bucket_name)
     os.makedirs(local_storage_dir, exist_ok=True)
 

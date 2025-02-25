@@ -1,5 +1,3 @@
-data "aws_region" "current" {}
-
 resource "aws_lambda_function" "launchpad_token_dispenser_lambda" {
   filename          = "../dist/token-dispenser_lambda.zip"
   function_name     = "${var.prefix}-launchpad_token_dispenser"
@@ -16,8 +14,8 @@ resource "aws_lambda_function" "launchpad_token_dispenser_lambda" {
   environment {
     variables = {
       LAUNCHPAD_GETTOKEN_URL                  = var.launchpad_gettoken_url
-      # If CLIENT has not renew/request token for this amount of time, it's DynamoDB entry will be deleted
-      CLIENT_EXPIRATION_TIME                  = var.client_expiration_seconds
+      # minimum_alive_secs
+      MINIMUM_ALIVE_SECS                      = var.minimum_alive_secs
       # The secret arn point to the Launchpad pfx password
       LAUNCHPAD_PFX_PASSWORD_SECRET_ARN       = var.launchpad_pfx_passcode_secret_arn
       # The bucket will launchpad.pfx is stored. Ex. my-sndbx-bucket

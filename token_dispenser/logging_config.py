@@ -1,55 +1,62 @@
 import logging
 from logging import Formatter, LogRecord, LoggerAdapter
-
 from typing import Optional
-GLOBAL_CLIENT_ID = 'N/A'
-GLOBAL_ADAPTER: Optional['CustomLoggerAdapter'] = None
+import threading
 
+# Global variables to hold logger instance and lock for thread-safety
+_logger_instance: Optional[LoggerAdapter] = None
+_lock = threading.Lock()
+_global_client_id:str=''
 
 class CustomFormatter(Formatter):
     def format(self, record: LogRecord) -> str:
-        # Add custom attributes to the log record
         record.client_id = getattr(record, 'client_id', 'N/A')
         return super().format(record)
 
 
 class CustomLoggerAdapter(LoggerAdapter):
     def process(self, msg, kwargs):
-        # Add custom attributes to the logging message
         kwargs['extra'] = kwargs.get('extra', {})
         kwargs['extra']['client_id'] = self.extra['client_id']
         return msg, kwargs
 
 
-def configure_logger(log_level=logging.INFO, client_id='N/A'):
-    global GLOBAL_CLIENT_ID
-    global GLOBAL_ADAPTER
-    GLOBAL_CLIENT_ID = client_id
-    # Create a logger
-    logger = logging.getLogger('TDS_Logger')
+def initialize_logger(log_level=logging.INFO, client_id='N/A') -> LoggerAdapter:
+    global _logger_instance
+    global _global_client_id
+    with _lock:
+        if _logger_instance is None:
+            print('Entering NONE logger')
+            _global_client_id = client_id
+            # Create the logger only if it hasn't been created yet
+            logger = logging.getLogger("TDS_Logger")
+            if not logger.hasHandlers():
+                logger.setLevel(log_level)
+                console_handler = logging.StreamHandler()
+                console_handler.setLevel(log_level)
 
-    # Set the logging level
-    logger.setLevel(log_level)
-    # Check if the logger already has handlers
-    if not logger.hasHandlers():
-        # Create a console handler
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(log_level)
+                formatter = CustomFormatter('%(levelname)s - client_id: %(client_id)s - %(message)s')
+                console_handler.setFormatter(formatter)
+                logger.addHandler(console_handler)
+            else:
+                return CustomLoggerAdapter(logger, {"client_id": client_id})
 
-        # Create and set a custom formatter
-        formatter = CustomFormatter('%(levelname)s - client_id: %(client_id)s - %(message)s')
-        console_handler.setFormatter(formatter)
+            _logger_instance = CustomLoggerAdapter(logger, {"client_id": client_id})
+        else:
+            _global_client_id = client_id
+            # If logger already exists, update the client_id and log level dynamically
+            _logger_instance.logger.setLevel(log_level)
+            for handler in _logger_instance.logger.handlers:
+                handler.setLevel(log_level)
+            _logger_instance.extra['client_id'] = client_id
+            print(f"Updated logger: client_id={client_id}, log_level={logging.getLevelName(log_level)}")
+    return _logger_instance
 
-        # Add the console handler to the logger
-        logger.addHandler(console_handler)
 
-    # Create a logger adapter with additional context
-    GLOBAL_ADAPTER = CustomLoggerAdapter(logger, {'client_id': GLOBAL_CLIENT_ID})
-    return GLOBAL_ADAPTER
-
-def get_logger_adapter() -> CustomLoggerAdapter:
-    global GLOBAL_CLIENT_ID
-    return configure_logger(logging.DEBUG, GLOBAL_CLIENT_ID)
-
-# Singleton instance of the logger adapter
-logger_adapter = configure_logger()
+# Function to get the current logger instance
+def shared_logger() -> LoggerAdapter:
+    global _logger_instance
+    if _logger_instance is None:
+        # Initialize with default settings if not initialized yet
+        return initialize_logger()
+    return _logger_instance
