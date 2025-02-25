@@ -86,11 +86,9 @@ def is_minimum_alive_secs_valid(minimum_alive_secs:int or None) -> bool :
 
 
 def handler(event, context):
-    # logging.getLogger().setLevel(logging.INFO)
     print(event)
     print('region-region: {}'.format(config.AWS_REGION))
     client_id = event.get('client_id', '')
-    logging.info(f"client_id: {client_id}")
     print("client_id: {client_id}")
     minimum_alive_secs: int|None= int(event.get('minimum_alive_secs', config.DEFAULT_TOKEN_MIN_ALIVE_SECS))
     # client_id must be alphanumeric
@@ -107,8 +105,7 @@ def handler(event, context):
         }
     # Set the logging level dynamically
     log_level = getattr(logging, config.LOG_LEVEL, logging.INFO)
-    logging.info(f"log_level: {log_level}")
-    print("log_level: {log_level}")
+    print(f"log_level: {log_level}")
     # Reconfigure the logger with the new log level
     log_adapter = initialize_logger(log_level, client_id=client_id)
     # This lambda does not burden user with required minimum_alive_sec. If such field is not provided by the caller
@@ -121,12 +118,8 @@ def handler(event, context):
     # get a new token, save new token to dynamoDB with new TTL
     # minimum_alive_secs:int|None = int(json.loads(event['body'])['minimum_alive_secs'])
     log_adapter.info(f"client_id with context: {context}")
-
-    # ClientTokens.Meta.table_name = config.DYNAMO_DB_CACHE_TABLE_NAME
-    # ClientTokens.Meta.region = config.AWS_REGION
     log_adapter.info(f"dynamoDB region: {config.AWS_REGION}")
     log_adapter.info(f"dynamoDB table name: {config.DYNAMO_DB_CACHE_TABLE_NAME}")
-    log_adapter.info("Starting token process")
     log_adapter.info(f'client_id: {client_id}  minimum_alive_secs: {minimum_alive_secs}')
 
     token_json = None

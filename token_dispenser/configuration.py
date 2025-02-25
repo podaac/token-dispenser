@@ -21,7 +21,7 @@ LOG_LEVEL:str = os.getenv('LOG_LEVEL','DEBUG')
 SESSION_MAXTIMEOUT:int = 3600
 # Default value for token alive time in seconds. If token alive time is shorter than this value, then refresh before return
 DEFAULT_TOKEN_MIN_ALIVE_SECS:int = 300
-MINIMUM_ALIVE_SECS:int = os.getenv('MINIMUM_ALIVE_SECS', DEFAULT_TOKEN_MIN_ALIVE_SECS)
+MINIMUM_ALIVE_SECS:int = int(os.getenv('MINIMUM_ALIVE_SECS', DEFAULT_TOKEN_MIN_ALIVE_SECS))
 # Maximum value of client requested minimum_alive_secs.
 # If client requesting minimum_alive_secs too close to 3600 secs, it will cause the program to refresh token too
 # frequently which defeats the purpose of token cache.
