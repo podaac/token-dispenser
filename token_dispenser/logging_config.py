@@ -31,27 +31,18 @@ def initialize_logger(log_level=logging.INFO, client_id='N/A') -> LoggerAdapter:
             _global_client_id = client_id
             # Create the logger only if it hasn't been created yet
             logger = logging.getLogger("TDS_Logger")
+            logger.propagate = False
             if not logger.hasHandlers():
-                print('logger does not have handlers, initializing handler')
                 logger.setLevel(log_level)
-                print('1')
                 console_handler = logging.StreamHandler()
-                print('1.1')
                 console_handler.setLevel(log_level)
-                print('1.2')
                 formatter = CustomFormatter('%(levelname)s - client_id: %(client_id)s - %(message)s')
-                print('1.3')
                 console_handler.setFormatter(formatter)
-                print('1.4')
                 logger.addHandler(console_handler)
-                print('1.5')
             else:
-                print('2')
                 return CustomLoggerAdapter(logger, {"client_id": client_id})
-            print('3')
             _logger_instance = CustomLoggerAdapter(logger, {"client_id": client_id})
         else:
-            print('4')
             _global_client_id = client_id
             # If logger already exists, update the client_id and log level dynamically
             _logger_instance.logger.setLevel(log_level)
@@ -59,7 +50,6 @@ def initialize_logger(log_level=logging.INFO, client_id='N/A') -> LoggerAdapter:
                 handler.setLevel(log_level)
             _logger_instance.extra['client_id'] = client_id
             print(f"Updated logger: client_id={client_id}, log_level={logging.getLevelName(log_level)}")
-    print('Returning logger_config')
     return _logger_instance
 
 

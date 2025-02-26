@@ -86,10 +86,7 @@ def is_minimum_alive_secs_valid(minimum_alive_secs:int or None) -> bool :
 
 
 def handler(event, context):
-    print(event)
-    print('region-region: {}'.format(config.AWS_REGION))
     client_id = event.get('client_id', '')
-    print("client_id: {client_id}")
     minimum_alive_secs: int|None= int(event.get('minimum_alive_secs', config.DEFAULT_TOKEN_MIN_ALIVE_SECS))
     # client_id must be alphanumeric
     if not is_client_id_valid(client_id):
@@ -105,7 +102,7 @@ def handler(event, context):
         }
     # Set the logging level dynamically
     log_level = getattr(logging, config.LOG_LEVEL, logging.INFO)
-    print(f"log_level: {log_level}")
+
     # Reconfigure the logger with the new log level
     log_adapter = initialize_logger(log_level, client_id=client_id)
     # This lambda does not burden user with required minimum_alive_sec. If such field is not provided by the caller
@@ -117,9 +114,7 @@ def handler(event, context):
     # if the token expected to be expired shorter than the expiration time, then
     # get a new token, save new token to dynamoDB with new TTL
     # minimum_alive_secs:int|None = int(json.loads(event['body'])['minimum_alive_secs'])
-    log_adapter.info(f"client_id with context: {context}")
-    log_adapter.info(f"dynamoDB region: {config.AWS_REGION}")
-    log_adapter.info(f"dynamoDB table name: {config.DYNAMO_DB_CACHE_TABLE_NAME}")
+    log_adapter.debug(f"Context: {context}")
     log_adapter.info(f'client_id: {client_id}  minimum_alive_secs: {minimum_alive_secs}')
 
     token_json = None
@@ -130,6 +125,7 @@ def handler(event, context):
         if token_structure_str is not None:
             token_json = json.loads(token_structure_str)
         if token_structure_str is not None and satisfy_minimum_alive_secs(token_json, minimum_alive_secs):
+            log_adapter.debug(f"Found token from cache which satisfied minimum allive secs: {minimum_alive_secs}")
             return token_structure_str
         else:
             # retrieve new token , save to dynamoDB and return new token
