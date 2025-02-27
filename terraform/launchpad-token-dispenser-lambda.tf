@@ -34,3 +34,13 @@ resource "aws_cloudwatch_log_group" "launchpad_token_dispenser_lambda_log_group"
   name              = "/aws/lambda/${var.prefix}-launchpad_token_dispenser"
   retention_in_days = var.log_retention_days
 }
+
+# write the created lambda function ARN into ssm under /service/token-dispenser/${prefix}
+resource "aws_ssm_parameter" "launchpad_token_dispenser_lambda_arn" {
+  name  = "/service/token-dispenser/${var.prefix}"
+  type  = "String"
+  value = aws_lambda_function.launchpad_token_dispenser_lambda.arn
+  depends_on = [
+    aws_lambda_function.launchpad_token_dispenser_lambda,
+  ]
+}
