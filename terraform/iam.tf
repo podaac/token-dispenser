@@ -46,14 +46,6 @@ data "aws_iam_policy_document" "launchpad_token_dispenser_lambda_processing_poli
   }
 
   statement {
-    actions = [
-      "dynamodb:DescribeTable",
-      "dynamodb:CreateTable"
-    ]
-    resources = ["*"]
-  }
-
-  statement {
     actions   = ["dynamodb:Query"]
     resources = ["${aws_dynamodb_table.launchpad_token_dispenser_cache_table.arn}/index/*"]
   }
