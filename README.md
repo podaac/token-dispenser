@@ -192,31 +192,32 @@ launchpad_pfx_file_s3_key="my-prefix/crypto/launchpad.pfx"
 
 ## Terraform based Deployment Command Examples
 Assuming build artifact is downloaded and placed in $PROJECT_ROOT/dist/token-dispenser_lambda.zip
-
 Tested with Terraform release 1.10.4. Example below assumes terraform executable file is named terraform
+```aiignore
 export AWS_SHARED_CREDENTIALS_FILE=~/.aws/credentials
 export AWS_PROFILE=your-profile-name
 export AWS_REGION=us-west-2
 terraform init --backend-config=backends/sndbx.tf -reconfigure -backend-config="profile=my-profile"
 terraform plan -var-file=tfvars/sndbx.tfvars -var="credentials=~/.aws/credentials" -var="profile=my-profile"
 terraform apply -var-file=tfvars/sndbx.tfvars -auto-approve -var="credentials=~/.aws/credentials" -var="profile=my-profile"
+```
 
-* Build software
-** build lambda through amazon python 3.12-x86_64 image which is based on linux 3
-* ```aiignore
-  docker pull public.ecr.aws/lambda/python:3.12-x86_64
-  example : docker run --rm --name java-python -it podaac-java-python:latest bash
-  docker run --rm --name python312 -v /tmp:/tmp -it public.ecr.aws/lambda/python:3.12-x86_64 bash
-  # To run amazon ecr based image.  use --entrypoint to overwrite the entry point
-  docker run --rm --name python312 -v /tmp/mydir:/tmp/mydir -it --entrypoint bash public.ecr.aws/lambda/python:3.12-x86_64
-  
-  curl -sSL https://install.python-poetry.org | python3 - --version 2.0.0
-  export PATH=/root/.local/bin:$PATH
-  pwd;mkdir venv;mkdir -p build/lambda;mkdir -p build/dist
-  poetry config virtualenvs.path venv
-  poetry lock
-  poetry install
-  cp -R token_dispenser venv/*/lib/*/site-packages/
-  chmod -R 775 venv/*/lib/*/site-packages/
-  cd env/*/lib/*/site-packages/; zip -r ../artifact.zip .
-  ```
+# Build software
+build lambda through amazon python 3.12-x86_64 image which is based on linux 3
+```aiignore
+docker pull public.ecr.aws/lambda/python:3.12-x86_64
+# example : docker run --rm --name java-python -it podaac-java-python:latest bash
+docker run --rm --name python312 -v /tmp:/tmp -it public.ecr.aws/lambda/python:3.12-x86_64 bash
+# To run amazon ecr based image.  use --entrypoint to overwrite the entry point
+docker run --rm --name python312 -v /tmp/mydir:/tmp/mydir -it --entrypoint bash public.ecr.aws/lambda/python:3.12-x86_64
+
+curl -sSL https://install.python-poetry.org | python3 - --version 2.0.0
+export PATH=/root/.local/bin:$PATH
+pwd;mkdir venv;mkdir -p build/lambda;mkdir -p build/dist
+poetry config virtualenvs.path venv
+poetry lock
+poetry install
+cp -R token_dispenser venv/*/lib/*/site-packages/
+chmod -R 775 venv/*/lib/*/site-packages/
+cd env/*/lib/*/site-packages/; zip -r ../artifact.zip .
+```
