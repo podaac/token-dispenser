@@ -2,7 +2,7 @@
 name = "token-dispenser"
 version = "0.1.0"
 description = ""
-authors = ["IandA <IandA@jpl.nasa.gov>"]
+authors = ["IandA <podaac-ia@jpl.nasa.gov>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]

@@ -47,7 +47,7 @@ variable "log_level" {
     condition     = contains(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], var.log_level)
     error_message = "The log level must be one of 'DEBUG', 'INFO', 'WARNING', 'ERROR' or 'CRITICAL'."
   }
-  default = "DEBUG"
+  default = "INFO"
 }
 
 variable "launchpad_gettoken_url" {

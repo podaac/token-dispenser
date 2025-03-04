@@ -11,6 +11,11 @@ resource "aws_lambda_function" "launchpad_token_dispenser_lambda" {
 
   depends_on = [aws_cloudwatch_log_group.launchpad_token_dispenser_lambda_log_group]
 
+  logging_config {
+    log_group = aws_cloudwatch_log_group.launchpad_token_dispenser_lambda_log_group.name
+    log_format = "Text"
+  }
+
   environment {
     variables = {
       LAUNCHPAD_GETTOKEN_URL                  = var.launchpad_gettoken_url
@@ -40,7 +45,4 @@ resource "aws_ssm_parameter" "launchpad_token_dispenser_lambda_arn" {
   name  = "/service/token-dispenser/${var.prefix}"
   type  = "String"
   value = aws_lambda_function.launchpad_token_dispenser_lambda.arn
-  depends_on = [
-    aws_lambda_function.launchpad_token_dispenser_lambda,
-  ]
 }

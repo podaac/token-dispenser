@@ -19,16 +19,19 @@ def get_secret_value(secret_id_or_arn: str) -> str:
     Raises:
         Exception: If the secret cannot be retrieved.
     """
+    logger = shared_logger()
     try:
-        shared_logger().debug('Retrieving secret value from AWS Secrets Manager.')
+        logger.debug('Retrieving secret value from AWS Secrets Manager.')
         # Retrieve the secret value
         response = client.get_secret_value(SecretId=secret_id_or_arn)
         # Check if the secret is stored as a string
         if 'SecretString' in response:
+            logger.debug('Retrieved pkcs12 secret value from AWS Secrets Manager successfully.')
             return response['SecretString']
         else:
             # Handle binary secrets if necessary
             raise ValueError("Secret is stored in binary format, not supported in this implementation.")
     except (BotoCoreError, ClientError) as error:
         # Handle errors from Secrets Manager
+        logger.exception(f'Error retrieving secret {secret_id_or_arn}: {error}')
         raise Exception(f"Error retrieving secret {secret_id_or_arn}: {error}")

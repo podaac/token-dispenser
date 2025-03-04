@@ -1,7 +1,6 @@
 import os
 import boto3
 from botocore.exceptions import ClientError
-import token_dispenser.configuration as configuration
 # Initialize the DynamoDB resource
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.getenv('DYNAMO_DB_CACHE_TABLE_NAME'))
@@ -19,27 +18,22 @@ def get_token_by_client_id(client_id:str):
     """
     try:
         response = table.get_item(Key={"client_id": client_id})
-        return response.get("Item", {}).get("token_structure")
+        return response.get("Item", {}).get("token")
     except ClientError as e:
         print(f"Error fetching token: {e.response['Error']['Message']}")
         return None
 
 
-def put_token(client_id:str, token_structure, ttl=None):
+def put_token(client_id:str, token, ttl):
     """
     Inserts or updates a token in the DynamoDB table.
 
     Args:
         client_id: The unique identifier for the client.
-        token_structure: The token structure as a string.
+        token: The token structure as a string.
         ttl: Time to live in seconds (optional).
     """
-    item = {
-        "client_id": client_id,
-        "token_structure": token_structure,
-    }
-    if ttl is not None:
-        item["time_to_live"] = ttl
+    item = {"client_id": client_id, "token": token, "time_to_live": ttl}
 
     try:
         table.put_item(Item=item)

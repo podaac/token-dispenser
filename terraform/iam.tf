@@ -23,7 +23,7 @@ data "aws_iam_policy_document" "launchpad_token_dispenser_lambda_processing_poli
       "logs:DescribeLogStreams",
       "logs:PutLogEvents"
     ]
-    # resources = [aws_cloudwatch_log_group.launchpad_token_dispenser_lambda_log_group.arn ]
+
     resources = [
       aws_cloudwatch_log_group.launchpad_token_dispenser_lambda_log_group.arn,
     "${aws_cloudwatch_log_group.launchpad_token_dispenser_lambda_log_group.arn}:*"
@@ -77,7 +77,7 @@ data "aws_iam_policy_document" "launchpad_token_dispenser_lambda_processing_poli
     ]
     resources = [
       "arn:aws:s3:::${var.launchpad_pfx_file_s3_bucket}",
-      "arn:aws:s3:::${var.launchpad_pfx_file_s3_bucket}/*"
+      "arn:aws:s3:::${var.launchpad_pfx_file_s3_bucket}/${var.launchpad_pfx_file_s3_key}"
     ]
   }
 }

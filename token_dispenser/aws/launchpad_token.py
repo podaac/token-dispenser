@@ -1,59 +1,45 @@
 
-import json
+import json, os
 from tempfile import NamedTemporaryFile
 import time
 import requests
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
 from token_dispenser.logging_config import shared_logger
 
-def get_token(url:str, private_key, certificate):
+cached_cert_file: NamedTemporaryFile = None
+
+def get_token(url:str,cert_file:str):
     """
     Access the /gettoken endpoint using the provided private key and certificate to obtain a token.
 
     :param url: The URL of the /gettoken endpoint.
-    :param private_key: The private key object (from cryptography.hazmat.primitives.asymmetric).
-    :param certificate: The certificate object (from cryptography.x509).
+    :param cert_file: the full path to a certificate file containing both cert string and private key.
 
-    :return: The token response as a string.
+    :return: The token response as a dict.
     """
-    log_adapter = shared_logger()
+    logger = shared_logger()
     try:
-        log_adapter.debug(f"entered get_token")
+        logger.debug(f"Trying to obtain a token from {url}")
         # Serialize private key and certificate into PEM format
-        private_key_pem = private_key.private_bytes(
-            encoding=Encoding.PEM,
-            format=PrivateFormat.PKCS8,
-            encryption_algorithm=NoEncryption()
-        ).decode("utf-8")
 
-        certificate_pem = certificate.public_bytes(Encoding.PEM).decode("utf-8")
-        # Combine private key and certificate into a single file for mutual TLS authentication
-        # The single file is managed by tempfile.NamedTemporaryFile where the library creates an arbitrary file
-        # and be responsible to remove the file while leaving the code block even if exception happened
-        # pem_file_path = '/tmp/temp_cert.pem'
-        with NamedTemporaryFile(delete=True) as pem_file:
-            pem_file.write(private_key_pem.encode('utf-8'))
-            pem_file.write(certificate_pem.encode('utf-8'))
-            pem_file.flush()
-            log_adapter.info('certificate pem and private combination created. Preparing for /gettoken call')
-            response = requests.get(
-                url,
-                cert=pem_file.name,
-                verify=True
-            )
-            # Check if the request was successful
-            if response.status_code == 200:
-                log_adapter.info("Successfully obtained token.")
-                content_str: str = response.content.decode('utf-8')
-                # Parse the string into a JSON object
-                json_data = json.loads(content_str)
-                current_time: int = int(time.time())
-                json_data['expires_at'] = current_time + int(json_data['session_maxtimeout'])
-                json_data['created_at'] = current_time
-                return json_data
-            else:
-                log_adapter.info("launchpad /gettoken call failed")
-                return f"Failed to obtain token. HTTP Status: {response.status_code}, Response: {response.text}"
+        response = requests.get(
+            url,
+            cert=cert_file,
+            verify=True
+        )
+        # Check if the request was successful
+        if response.status_code == 200:
+            logger.info("Successfully obtained token.")
+            content_str: str = response.content.decode('utf-8')
+            # Parse the string into a JSON object
+            json_data = json.loads(content_str)
+            current_time: int = int(time.time())
+            json_data['expires_at'] = current_time + int(json_data['session_maxtimeout'])
+            json_data['created_at'] = current_time
+            return json_data
+        else:
+            logger.info("launchpad /gettoken call failed with code {response.status_code}")
+            return f"Failed to obtain token. HTTP Status: {response.status_code}, Response: {response.text}"
     except Exception as e:
-        log_adapter.error(f"get_token error occurred: {str(e)}")
+        logger.error(f"get_token error occurred: {str(e)}")
         raise e

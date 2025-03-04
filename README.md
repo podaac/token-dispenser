@@ -209,7 +209,7 @@ docker pull public.ecr.aws/lambda/python:3.12-x86_64
 # example : docker run --rm --name java-python -it podaac-java-python:latest bash
 docker run --rm --name python312 -v /tmp:/tmp -it public.ecr.aws/lambda/python:3.12-x86_64 bash
 # To run amazon ecr based image.  use --entrypoint to overwrite the entry point
-docker run --rm --name python312 -v /tmp/mydir:/tmp/mydir -it --entrypoint bash public.ecr.aws/lambda/python:3.12-x86_64
+docker run --rm --name python312 -v /tmp:/tmp -it --entrypoint bash public.ecr.aws/lambda/python:3.12-x86_64
 
 curl -sSL https://install.python-poetry.org | python3 - --version 2.0.0
 export PATH=/root/.local/bin:$PATH
