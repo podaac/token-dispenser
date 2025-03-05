@@ -112,10 +112,10 @@ def is_client_id_valid(client_id:str) -> bool:
 
 def is_minimum_alive_secs_valid(minimum_alive_secs:int) -> bool :
     # If reached this point, minimum_alive_secs can not be NONE
-    if not minimum_alive_secs.is_integer():
+    if not isinstance(minimum_alive_secs, int):
         return False
 
-    if  (minimum_alive_secs.is_integer() and
+    if  (isinstance(minimum_alive_secs, int) and
             minimum_alive_secs > config.MAX_REQUESTED_ALIVE_SECS or minimum_alive_secs < 0):
         return False
     else:
