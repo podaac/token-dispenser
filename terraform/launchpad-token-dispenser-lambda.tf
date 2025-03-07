@@ -9,8 +9,6 @@ resource "aws_lambda_function" "launchpad_token_dispenser_lambda" {
   timeout           = var.launchpad_token_dispenser_lambda_timeout
   memory_size       = var.launchpad_token_dispenser_lambda_memory_size
 
-  depends_on = [aws_cloudwatch_log_group.launchpad_token_dispenser_lambda_log_group]
-
   logging_config {
     log_group = aws_cloudwatch_log_group.launchpad_token_dispenser_lambda_log_group.name
     log_format = "Text"

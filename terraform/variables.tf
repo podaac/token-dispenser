@@ -56,11 +56,17 @@ variable "launchpad_gettoken_url" {
 }
 
 # The bucket where launchpad.pfx is stored. Ex. my-sndbx-bucket
-variable "launchpad_pfx_file_s3_bucket"{}
+variable "launchpad_pfx_file_s3_bucket"{
+  type    = string
+}
+
 
 # The key to point to launchpad.pfx Ex. /folder1/folder2/launchpad.pfx
-variable "launchpad_pfx_file_s3_key" {}
+variable "launchpad_pfx_file_s3_key" {
+  type    = string
+}
 
 # The ARN of the secret storing pfx passcode
-variable "launchpad_pfx_passcode_secret_arn" {}
-
+variable "launchpad_pfx_passcode_secret_arn" {
+  type    = string
+}

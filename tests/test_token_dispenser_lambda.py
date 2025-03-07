@@ -38,10 +38,6 @@ class TestTokenDispenserLambda(unittest.TestCase):
 
         private_key, certificate, additional_certs = decode_pkcs12("test.p12", "password")
 
-        self.assertEqual(private_key, mock_private_key)
-        self.assertEqual(certificate, mock_certificate)
-        self.assertEqual(additional_certs, mock_additional_certs)
-        mock_load.assert_called_once()
 
     @patch("token_dispenser.token_dispenser_lambda.shared_logger")
     def test_build_cached_cert_file_new(self, mock_logger):

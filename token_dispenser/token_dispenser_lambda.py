@@ -13,6 +13,8 @@ from token_dispenser.logging_config import initialize_logger, shared_logger
 import time
 
 cached_cert_file:NamedTemporaryFile = None
+# Set the logging level dynamically
+log_level = getattr(logging, config.LOG_LEVEL, logging.INFO)
 
 def decode_pkcs12(p12_file_path, password: str):
     """
@@ -28,7 +30,7 @@ def decode_pkcs12(p12_file_path, password: str):
     # Decode the PKCS#12 file
     private_key, certificate, additional_certs = load_key_and_certificates(
         pkcs12_data,
-        password.encode("utf-8") if password else None,
+        password.encode("utf-8"),
         backend=default_backend()
     )
     return private_key, certificate, additional_certs
@@ -49,7 +51,7 @@ def build_cached_cert_file(private_key, certificate):
         # Combine private key and certificate into a single file for mutual TLS authentication
         # The single file is managed by tempfile.NamedTemporaryFile where the library creates an arbitrary file
         # and be responsible to remove the file while exiting the python virtual machine even if exception happened
-        if cached_cert_file is None or os.path.getsize(cached_cert_file.name) >0:
+        if cached_cert_file is None:
             cached_cert_file = NamedTemporaryFile(delete=True)  # Important: delete=True. deletion after python exits
             cached_cert_file.write(private_key_pem.encode('utf-8'))
             cached_cert_file.write(certificate_pem.encode('utf-8'))
@@ -82,7 +84,7 @@ def get_new_token(client_id:str):
             logger.debug(f"cached cert file not found")
             p12_file = download_s3_file(bucket_name=config.LAUNCHPAD_PFX_FILE_S3_BUCKET,
                                                 key=config.LAUNCHPAD_PFX_FILE_S3_KEY, local_storage_dir='/tmp')
-            shared_logger().info(f"p12 file downloaded from s3 successfully to: {p12_file}")
+            logger.info(f"p12 file downloaded from s3 successfully to: {p12_file}")
             password = get_secret_value(config.LAUNCHPAD_PFX_PASSWORD_SECRET_ARN)
             private_key, cert, additional_certs = decode_pkcs12(p12_file, password)
             cached_cert_file = build_cached_cert_file(private_key, cert)
@@ -145,9 +147,6 @@ def handler(event, context):
                                          f"and smaller or equal than {config.MAX_REQUESTED_ALIVE_SECS} secs"}
         }
 
-    # Set the logging level dynamically
-    log_level = getattr(logging, config.LOG_LEVEL, logging.INFO)
-
     # Reconfigure the logger with the new log level
     logger = initialize_logger(log_level, client_id=client_id)
     # if the token expected to be expired shorter than the expiration time, then
@@ -165,7 +164,7 @@ def handler(event, context):
             token_json = json.loads(token_structure_str)
         if token_structure_str is not None and satisfy_minimum_alive_secs(int(token_json.get('expires_at')), minimum_alive_secs):
             logger.debug(f"Found token from cache which satisfied minimum alive secs: {minimum_alive_secs}")
-            return token_structure_str
+            return token_json
         else:
             # retrieve new token , save to dynamoDB and return new token
             token_json = get_new_token(client_id) # this function will retrieve new token and save it to cache

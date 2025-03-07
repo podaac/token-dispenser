@@ -11,9 +11,9 @@ LAUNCHPAD_PFX_FILE_S3_BUCKET = os.environ['LAUNCHPAD_PFX_FILE_S3_BUCKET']
 # The key to point to launchpad.pfx Ex. /folder1/folder2/launchpad.pfx
 LAUNCHPAD_PFX_FILE_S3_KEY = os.environ['LAUNCHPAD_PFX_FILE_S3_KEY']
 # DynamoDB is used for cache clientId and token. If not passed in , the program shall fail
-DYNAMO_DB_CACHE_TABLE_NAME: str = os.getenv('DYNAMO_DB_CACHE_TABLE_NAME')
+DYNAMO_DB_CACHE_TABLE_NAME: str = os.environ['DYNAMO_DB_CACHE_TABLE_NAME']
 # The os.getenv('AWS_REGION') should get the lambda's running region
-AWS_REGION:str = os.getenv('AWS_REGION')
+AWS_REGION:str = os.environ['AWS_REGION']
 # lambda logging level
 LOG_LEVEL:str = os.getenv('LOG_LEVEL','INFO')
 

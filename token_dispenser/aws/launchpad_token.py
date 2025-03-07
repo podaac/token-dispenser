@@ -3,7 +3,6 @@ import json, os
 from tempfile import NamedTemporaryFile
 import time
 import requests
-from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
 from token_dispenser.logging_config import shared_logger
 
 cached_cert_file: NamedTemporaryFile = None
@@ -24,8 +23,7 @@ def get_token(url:str,cert_file:str):
 
         response = requests.get(
             url,
-            cert=cert_file,
-            verify=True
+            cert=cert_file
         )
         # Check if the request was successful
         if response.status_code == 200:
@@ -39,7 +37,7 @@ def get_token(url:str,cert_file:str):
             return json_data
         else:
             logger.info("launchpad /gettoken call failed with code {response.status_code}")
-            return f"Failed to obtain token. HTTP Status: {response.status_code}, Response: {response.text}"
+            response.raise_for_status()
     except Exception as e:
-        logger.error(f"get_token error occurred: {str(e)}")
+        logger.exception(f"get_token error occurred")
         raise e
