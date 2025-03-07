@@ -5,6 +5,7 @@ os.environ['DYNAMO_DB_CACHE_TABLE_NAME'] = 'sndbx-LaunchpadTokenDispenserCacheTa
 os.environ['LAUNCHPAD_PFX_FILE_S3_BUCKET'] = 'sndbx-myBucket'
 os.environ['LAUNCHPAD_PFX_FILE_S3_KEY'] = 'pfx-Key'
 os.environ['LOG_LEVEL'] = 'INFO'
+os.environ['LAUNCHPAD_PFX_PASSWORD_SECRET_ARN'] = 'aws:arn:xxxxxx'
 import unittest
 from unittest.mock import patch, mock_open, MagicMock
 import json, time
@@ -103,4 +104,4 @@ class TestTokenDispenserLambda(unittest.TestCase):
         mock_get_db_token.return_value = json.dumps({"expires_at": int(time.time() + 3600)})
         event = {"client_id": "testclient", "minimum_alive_secs": 100}
         result = handler(event, MagicMock())
-        self.assertEqual(type(json.loads(result)), dict)
+        self.assertEqual(type(result), dict)
