@@ -42,3 +42,4 @@ def put_token(client_id:str, token, ttl):
         table.put_item(Item=item)
     except ClientError as e:
         logger.exception(f"Error saving token")
+        raise e

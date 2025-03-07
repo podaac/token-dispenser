@@ -5,7 +5,7 @@ DEFAULT_LAUNCHPAD_GETTOKEN_URL:str =  "https://api.launchpad.nasa.gov/icam/api/s
 # Launchpad token api url
 LAUNCHPAD_GETTOKEN_URL: str = os.getenv('LAUNCHPAD_GETTOKEN_URL', DEFAULT_LAUNCHPAD_GETTOKEN_URL)
 # The secret-id point to the Launchpad pfx password
-LAUNCHPAD_PFX_PASSWORD_SECRET_ARN:str = os.getenv('LAUNCHPAD_PFX_PASSWORD_SECRET_ARN')
+LAUNCHPAD_PFX_PASSWORD_SECRET_ARN:str = os.environ['LAUNCHPAD_PFX_PASSWORD_SECRET_ARN']
 # The bucket will launchpad.pfx is stored. Ex. my-sndbx-bucket
 LAUNCHPAD_PFX_FILE_S3_BUCKET = os.environ['LAUNCHPAD_PFX_FILE_S3_BUCKET']
 # The key to point to launchpad.pfx Ex. /folder1/folder2/launchpad.pfx

@@ -35,9 +35,9 @@ def get_token(url:str,cert_file:str):
             json_data['expires_at'] = current_time + int(json_data['session_maxtimeout'])
             json_data['created_at'] = current_time
             return json_data
-        else:
-            logger.info("launchpad /gettoken call failed with code {response.status_code}")
-            response.raise_for_status()
+
+        logger.info("launchpad /gettoken call failed with code {response.status_code}")
+        response.raise_for_status()
     except Exception as e:
         logger.exception(f"get_token error occurred")
         raise e

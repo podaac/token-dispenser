@@ -7,14 +7,16 @@ from token_dispenser.aws.secret_manager import get_secret_value
 from token_dispenser.aws.launchpad_token import get_token
 import token_dispenser.configuration as config
 from token_dispenser.repository.token_repo import put_token, get_token_by_client_id
-import os, json, re
+import json, re
+import tempfile
 import logging
 from token_dispenser.logging_config import initialize_logger, shared_logger
 import time
 
 cached_cert_file:NamedTemporaryFile = None
+temp_dir = tempfile.TemporaryDirectory()
 # Set the logging level dynamically
-log_level = getattr(logging, config.LOG_LEVEL, logging.INFO)
+log_level = getattr(logging, config.LOG_LEVEL)
 
 def decode_pkcs12(p12_file_path, password: str):
     """
@@ -52,7 +54,7 @@ def build_cached_cert_file(private_key, certificate):
         # The single file is managed by tempfile.NamedTemporaryFile where the library creates an arbitrary file
         # and be responsible to remove the file while exiting the python virtual machine even if exception happened
         if cached_cert_file is None:
-            cached_cert_file = NamedTemporaryFile(delete=True)  # Important: delete=True. deletion after python exits
+            cached_cert_file = NamedTemporaryFile()  # default: delete=True. deletion after python exits
             cached_cert_file.write(private_key_pem.encode('utf-8'))
             cached_cert_file.write(certificate_pem.encode('utf-8'))
             cached_cert_file.flush()
@@ -77,13 +79,14 @@ def get_new_token(client_id:str):
     global cached_cert_file
     logger = shared_logger()
     try:
-        if cached_cert_file is not None and os.path.exists(cached_cert_file.name) and os.path.getsize(cached_cert_file.name) >0:
+        if cached_cert_file is not None:
             logger.debug(f"found cached cert file {cached_cert_file.name}")
             get_token(url=config.LAUNCHPAD_GETTOKEN_URL, cert_file=cached_cert_file.name)
         else:
             logger.debug(f"cached cert file not found")
             p12_file = download_s3_file(bucket_name=config.LAUNCHPAD_PFX_FILE_S3_BUCKET,
-                                                key=config.LAUNCHPAD_PFX_FILE_S3_KEY, local_storage_dir='/tmp')
+                                        key=config.LAUNCHPAD_PFX_FILE_S3_KEY,
+                                        local_storage_dir=temp_dir.name)
             logger.info(f"p12 file downloaded from s3 successfully to: {p12_file}")
             password = get_secret_value(config.LAUNCHPAD_PFX_PASSWORD_SECRET_ARN)
             private_key, cert, additional_certs = decode_pkcs12(p12_file, password)
@@ -93,7 +96,7 @@ def get_new_token(client_id:str):
         put_token(client_id, json.dumps(token_json), int(token_json['expires_at']))
         return token_json
     except Exception as e:
-        print(f"Failed on get_new_token process: {e}")
+        logger.exception(f"Failed on get_new_token process")
         raise e
 
 
@@ -102,10 +105,9 @@ def satisfy_minimum_alive_secs(expires_at:int, minimum_alive_secs:int) -> bool:
     # it means the request does not care so we will assume whatever cached is ok
     if minimum_alive_secs is None or minimum_alive_secs <= 0:
         return True
-    if expires_at - time.time() > minimum_alive_secs:
-        return True
-    else:
-        return False
+
+    return expires_at - time.time() > minimum_alive_secs
+
 
 def is_client_id_valid(client_id:str) -> bool:
     pattern = re.compile(r'^[a-zA-Z0-9]{3,32}$')
@@ -117,11 +119,8 @@ def is_minimum_alive_secs_valid(minimum_alive_secs:int) -> bool :
     if not isinstance(minimum_alive_secs, int):
         return False
 
-    if  (isinstance(minimum_alive_secs, int) and
-            minimum_alive_secs > config.MAX_REQUESTED_ALIVE_SECS or minimum_alive_secs < 0):
-        return False
-    else:
-        return True
+    return not((isinstance(minimum_alive_secs, int) and
+                (minimum_alive_secs > config.MAX_REQUESTED_ALIVE_SECS or minimum_alive_secs < 0)))
 
 
 def handler(event, context):
@@ -137,7 +136,7 @@ def handler(event, context):
             "body": {"error": "client_id must be alpha-numeric"}
         }
     # if user passed in a non-integer minimum_alive_secs, this line will error out
-    minimum_alive_secs=config.DEFAULT_TOKEN_MIN_ALIVE_SECS if event.get('minimum_alive_secs') is None \
+    minimum_alive_secs=config.MINIMUM_ALIVE_SECS if event.get('minimum_alive_secs') is None \
         else int(event.get('minimum_alive_secs'))
     # client_id must be alphanumeric
     if not is_minimum_alive_secs_valid(minimum_alive_secs):
