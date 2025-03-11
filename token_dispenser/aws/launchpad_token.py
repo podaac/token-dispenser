@@ -1,5 +1,8 @@
-
-import json, os
+"""
+This module accesses the /gettoken endpoint from launchpad application to obtain
+Launchpad Token
+"""
+import json
 from tempfile import NamedTemporaryFile
 import time
 import requests
@@ -7,12 +10,14 @@ from token_dispenser.logging_config import shared_logger
 
 cached_cert_file: NamedTemporaryFile = None
 
-def get_token(url:str,cert_file:str):
+
+def get_token(url: str, cert_file: str):
     """
     Access the /gettoken endpoint using the provided private key and certificate to obtain a token.
 
     :param url: The URL of the /gettoken endpoint.
-    :param cert_file: the full path to a certificate file containing both cert string and private key.
+    :param cert_file: the full path to a certificate file containing both cert string and
+    private key.
 
     :return: The token response as a dict.
     """
@@ -23,7 +28,8 @@ def get_token(url:str,cert_file:str):
 
         response = requests.get(
             url,
-            cert=cert_file
+            cert=cert_file,
+            timeout=10  # timeout of 10 seconds
         )
         # Check if the request was successful
         if response.status_code == 200:
@@ -38,6 +44,7 @@ def get_token(url:str,cert_file:str):
 
         logger.info("launchpad /gettoken call failed with code {response.status_code}")
         response.raise_for_status()
-    except Exception as e:
-        logger.exception(f"get_token error occurred")
-        raise e
+        return None
+    except Exception as exception:
+        logger.exception("get_token error occurred")
+        raise exception

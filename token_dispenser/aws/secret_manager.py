@@ -1,3 +1,6 @@
+"""
+This module provides ability to read from secretemanager
+"""
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
@@ -8,7 +11,8 @@ client = boto3.client('secretsmanager')
 
 def get_secret_value(secret_id_or_arn: str) -> str:
     """
-    Retrieves the secret value for the given secret_id or secret_id's ARN from AWS Secrets Manager.
+    Retrieves the secret value for the given secret_id or secret_id's ARN
+    from AWS Secrets Manager.
 
     Args:
         secret_id_or_arn (str): The identifier of the secret.
@@ -28,10 +32,11 @@ def get_secret_value(secret_id_or_arn: str) -> str:
         if 'SecretString' in response:
             logger.debug('Retrieved pkcs12 secret value from AWS Secrets Manager successfully.')
             return response['SecretString']
-        else:
-            # Handle binary secrets if necessary
-            raise ValueError("Secret is stored in binary format, not supported in this implementation.")
+
+        # Handle binary secrets if necessary
+        raise ValueError("Secret is stored in binary format, not supported"
+                         " in this implementation.")
     except (BotoCoreError, ClientError) as error:
         # Handle errors from Secrets Manager
         logger.exception(f'Error retrieving secret {secret_id_or_arn}: {error}')
-        raise Exception(f"Error retrieving secret {secret_id_or_arn}: {error}")
+        raise RuntimeError(f"Error retrieving secret {secret_id_or_arn}: {error}") from error

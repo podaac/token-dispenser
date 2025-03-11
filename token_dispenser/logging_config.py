@@ -1,11 +1,15 @@
+"""
+This module provides application level logging abilities with
+input client_id always within each log output statement
+"""
 import logging
 from logging import Formatter, LogRecord, LoggerAdapter
 from typing import Optional
-import threading
 
 # Global variables to hold logger instance and lock for thread-safety
 _logger_instance: Optional[LoggerAdapter] = None
-_global_client_id:str=''
+_global_client_id: str = ''
+
 
 class CustomFormatter(Formatter):
     def format(self, record: LogRecord) -> str:

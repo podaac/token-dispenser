@@ -1,3 +1,7 @@
+"""
+This module provides ability to read and write to token dispenser cache which is
+AWS DynamoDB
+"""
 import os
 import boto3
 from botocore.exceptions import ClientError
@@ -7,7 +11,7 @@ dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.getenv('DYNAMO_DB_CACHE_TABLE_NAME'))
 
 
-def get_token_by_client_id(client_id:str):
+def get_token_by_client_id(client_id: str):
     """
     Retrieves the token structure for the given client ID.
 
@@ -21,12 +25,12 @@ def get_token_by_client_id(client_id:str):
     try:
         response = table.get_item(Key={"client_id": client_id})
         return response.get("Item", {}).get("token")
-    except ClientError as e:
-        logger.exception(f"Error fetching token")
+    except ClientError as exception:
+        logger.exception(f'Error fetching token {exception}')
         return None
 
 
-def put_token(client_id:str, token, ttl):
+def put_token(client_id: str, token, ttl):
     """
     Inserts or updates a token in the DynamoDB table.
 
@@ -40,6 +44,6 @@ def put_token(client_id:str, token, ttl):
 
     try:
         table.put_item(Item=item)
-    except ClientError as e:
-        logger.exception(f"Error saving token")
-        raise e
+    except ClientError as exception:
+        logger.exception("Error saving token")
+        raise exception
