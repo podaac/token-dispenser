@@ -102,6 +102,7 @@ def get_new_token(client_id: str):
     # pylint: disable=global-statement
     global cached_cert_file
     logger = shared_logger()
+    token_json = None
     try:
         if cached_cert_file is not None:
             logger.debug(f"found cached cert file {cached_cert_file.name}")
@@ -180,7 +181,8 @@ def handler(event, context):
     if not is_client_id_valid(client_id):
         return {
             "statusCode": 400,
-            "body": {"error": "client_id must be alpha-numeric"}
+            "body": {"error": "Invalid client_id. Client IDs must be alphanumeric and"
+                              " between 3 and 32 characters in length."}
         }
     # if user passed in a non-integer minimum_alive_secs, this line will error out
     minimum_alive_secs = config.MINIMUM_ALIVE_SECS if event.get('minimum_alive_secs') is None \
