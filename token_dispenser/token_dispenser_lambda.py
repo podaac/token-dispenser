@@ -191,9 +191,9 @@ def handler(event, context):
     if not is_minimum_alive_secs_valid(minimum_alive_secs):
         return {
             "statusCode": 422,
-            "body": {"error": f"minimum_alive_secs if provided,"
-                              f" must be numeric and smaller "
-                              f"or equal than {config.MAX_REQUESTED_ALIVE_SECS} secs"}
+            "body": {"error": f"minimum_alive_secs, if provided, "
+                              f"must be numeric and smaller than or equal to "
+                              f"{config.MAX_REQUESTED_ALIVE_SECS} secs"}
         }
 
     # Reconfigure the logger with the new log level
