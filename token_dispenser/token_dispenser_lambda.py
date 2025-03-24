@@ -106,7 +106,8 @@ def get_new_token(client_id: str):
     try:
         if cached_cert_file is not None:
             logger.debug(f"found cached cert file {cached_cert_file.name}")
-            get_token(url=config.LAUNCHPAD_GETTOKEN_URL, cert_file=cached_cert_file.name)
+            token_json = get_token(url=config.LAUNCHPAD_GETTOKEN_URL,
+                                   cert_file=cached_cert_file.name)
         else:
             logger.debug("cached cert file not found")
             p12_file = download_s3_file(bucket_name=config.LAUNCHPAD_PFX_FILE_S3_BUCKET,
@@ -198,9 +199,6 @@ def handler(event, context):
 
     # Reconfigure the logger with the new log level
     logger = initialize_logger(log_level, client_id=client_id)
-    # if the token expected to be expired shorter than the expiration time, then
-    # get a new token, save new token to dynamoDB with new TTL
-    # minimum_alive_secs:int|None = int(json.loads(event['body'])['minimum_alive_secs'])
     logger.debug(f"Context: {context}")
     logger.info(f'client_id: {client_id}  minimum_alive_secs: {minimum_alive_secs}')
 
@@ -211,13 +209,13 @@ def handler(event, context):
         token_structure_str: str = get_token_by_client_id(client_id)
         if token_structure_str is not None:
             token_json = json.loads(token_structure_str)
-        if (token_structure_str is not None
-                and satisfy_minimum_alive_secs(int(token_json.get('expires_at')),
-                                               minimum_alive_secs)):
-            logger.debug(f"Found token from cache which satisfied minimum alive secs:"
-                         f" {minimum_alive_secs}")
-            return token_json
-        # retrieve new token , save to dynamoDB and return new token
+            if (satisfy_minimum_alive_secs(int(token_json.get('expires_at')),
+                                           minimum_alive_secs)):
+                logger.debug(f"Found token from cache which satisfied minimum alive secs:"
+                             f" {minimum_alive_secs}")
+                return token_json
+        # Not finding token from dynamoDB, hence retrieve new token,
+        # save to dynamoDB and return new token
         token_json = get_new_token(client_id)
         return token_json
 

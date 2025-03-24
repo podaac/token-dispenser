@@ -36,8 +36,11 @@ class TestTokenDispenserLambda(unittest.TestCase):
         mock_certificate = MagicMock()
         mock_additional_certs = MagicMock()
         mock_load.return_value = (mock_private_key, mock_certificate, mock_additional_certs)
-
         private_key, certificate, additional_certs = decode_pkcs12("test.p12", "password")
+        self.assertEqual(private_key, mock_private_key, "The private_key does not match the expected mock object.")
+        self.assertEqual(certificate, mock_certificate, "The certificate does not match the expected mock object.")
+        self.assertEqual(additional_certs, mock_additional_certs, "The additional_certs do not match the expected mock object.")
+        
 
     @patch("token_dispenser.token_dispenser_lambda.shared_logger")
     def test_build_cached_cert_file_new(self, mock_logger):
@@ -108,7 +111,9 @@ class TestTokenDispenserLambda(unittest.TestCase):
     @patch("token_dispenser.token_dispenser_lambda.initialize_logger")
     def test_handler(self, mock_logger, mock_get_db_token, mock_get_new_token):
         """ test lambda handler"""
-        mock_get_db_token.return_value = json.dumps({"expires_at": int(time.time() + 3600)})
+        current_time_plus_one_hour:int  = int(time.time()) + 3600
+        mock_get_db_token.return_value = json.dumps({"expires_at": current_time_plus_one_hour})
         event = {"client_id": "testclient", "minimum_alive_secs": 100}
         result = handler(event, MagicMock())
         self.assertEqual(type(result), dict)
+        self.assertTrue(result['expires_at'], current_time_plus_one_hour)

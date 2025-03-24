@@ -22,29 +22,25 @@ def get_token(url: str, cert_file: str):
     :return: The token response as a dict.
     """
     logger = shared_logger()
-    try:
-        logger.debug(f"Trying to obtain a token from {url}")
-        # Serialize private key and certificate into PEM format
+    logger.debug(f"Trying to obtain a token from {url}")
+    # Serialize private key and certificate into PEM format
 
-        response = requests.get(
-            url,
-            cert=cert_file,
-            timeout=10  # timeout of 10 seconds
-        )
-        # Check if the request was successful
-        if response.status_code == 200:
-            logger.info("Successfully obtained token.")
-            content_str: str = response.content.decode('utf-8')
-            # Parse the string into a JSON object
-            json_data = json.loads(content_str)
-            current_time: int = int(time.time())
-            json_data['expires_at'] = current_time + int(json_data['session_maxtimeout'])
-            json_data['created_at'] = current_time
-            return json_data
+    response = requests.get(
+        url,
+        cert=cert_file,
+        timeout=10  # timeout of 10 seconds
+    )
+    # Check if the request was successful
+    if response.status_code == 200:
+        logger.info("Successfully obtained token.")
+        content_str: str = response.content.decode('utf-8')
+        # Parse the string into a JSON object
+        json_data = json.loads(content_str)
+        current_time: int = int(time.time())
+        json_data['expires_at'] = current_time + int(json_data['session_maxtimeout'])
+        json_data['created_at'] = current_time
+        return json_data
 
-        logger.info("launchpad /gettoken call failed with code {response.status_code}")
-        response.raise_for_status()
-        return None
-    except Exception as exception:
-        logger.exception("get_token error occurred")
-        raise exception
+    logger.info("launchpad /gettoken call failed with code {response.status_code}")
+    response.raise_for_status()
+    return None

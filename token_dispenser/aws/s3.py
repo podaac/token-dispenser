@@ -18,7 +18,6 @@ def download_s3_file(bucket_name: str, key: str, local_storage_dir: str) -> str:
     """
     logger = shared_logger()
     logger.info(f'Downloading file from S3 bucket {bucket_name}')
-    os.makedirs(local_storage_dir, exist_ok=True)
 
     # Extract the filename from the key
     filename = os.path.basename(key)

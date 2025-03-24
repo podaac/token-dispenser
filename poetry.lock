@@ -363,17 +363,6 @@ files = [
 all = ["flake8 (>=7.1.1)", "mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2)"]
 
 [[package]]
-name = "importlib"
-version = "1.0.4"
-description = "Backport of importlib.import_module() from Python 2.7"
-optional = false
-python-versions = "*"
-groups = ["dev"]
-files = [
-    {file = "importlib-1.0.4.zip", hash = "sha256:b6ee7066fea66e35f8d0acee24d98006de1a0a8a94a8ce6efe73a9a23c8d9826"},
-]
-
-[[package]]
 name = "iniconfig"
 version = "2.0.0"
 description = "brain-dead simple config-ini parsing"
@@ -788,4 +777,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "612653ce3f584430a675636d2dd3b83851816ab0dbb7bae81abd59939e548af8"
+content-hash = "dd5246210a27c3a81d98f2a86682efd9aceaa0d1ab4833bbc6e70bcd9592dfec"

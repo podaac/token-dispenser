@@ -8,7 +8,6 @@ from typing import Optional
 
 # Global variables to hold logger instance and lock for thread-safety
 _logger_instance: Optional[LoggerAdapter] = None
-_global_client_id: str = ''
 
 
 class CustomFormatter(Formatter):
@@ -26,11 +25,9 @@ class CustomLoggerAdapter(LoggerAdapter):
 
 def initialize_logger(log_level=logging.INFO, client_id='N/A') -> LoggerAdapter:
     global _logger_instance
-    global _global_client_id
     print('Initializing logger_config')
     if _logger_instance is None:
         print('Entering logger while it is NONE')
-        _global_client_id = client_id
         # Create the logger only if it hasn't been created yet
         logger = logging.getLogger("TDS_Logger")
         logger.propagate = False
@@ -45,7 +42,6 @@ def initialize_logger(log_level=logging.INFO, client_id='N/A') -> LoggerAdapter:
             return CustomLoggerAdapter(logger, {"client_id": client_id})
         _logger_instance = CustomLoggerAdapter(logger, {"client_id": client_id})
     else:
-        _global_client_id = client_id
         # If logger already exists, update the client_id and log level dynamically
         _logger_instance.logger.setLevel(log_level)
         for handler in _logger_instance.logger.handlers:
