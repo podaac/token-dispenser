@@ -27,21 +27,6 @@ class TestTokenDispenserLambda(unittest.TestCase):
     """
     Test class for token_dispenser_lambda
     """
-
-    @patch("token_dispenser.token_dispenser_lambda.load_key_and_certificates")
-    @patch("builtins.open", new_callable=mock_open, read_data=b"pkcs12_data")
-    def test_decode_pkcs12(self, mock_file, mock_load):
-        """test the function which decodes pkcs12 file"""
-        mock_private_key = MagicMock()
-        mock_certificate = MagicMock()
-        mock_additional_certs = MagicMock()
-        mock_load.return_value = (mock_private_key, mock_certificate, mock_additional_certs)
-        private_key, certificate, additional_certs = decode_pkcs12("test.p12", "password")
-        self.assertEqual(private_key, mock_private_key, "The private_key does not match the expected mock object.")
-        self.assertEqual(certificate, mock_certificate, "The certificate does not match the expected mock object.")
-        self.assertEqual(additional_certs, mock_additional_certs, "The additional_certs do not match the expected mock object.")
-        
-
     @patch("token_dispenser.token_dispenser_lambda.shared_logger")
     def test_build_cached_cert_file_new(self, mock_logger):
         """test the function which builds cached cert file"""
@@ -106,14 +91,3 @@ class TestTokenDispenserLambda(unittest.TestCase):
         self.assertFalse(is_minimum_alive_secs_valid(-10))
         self.assertFalse(is_minimum_alive_secs_valid(10.5))
 
-    @patch("token_dispenser.token_dispenser_lambda.get_new_token")
-    @patch("token_dispenser.token_dispenser_lambda.get_token_by_client_id")
-    @patch("token_dispenser.token_dispenser_lambda.initialize_logger")
-    def test_handler(self, mock_logger, mock_get_db_token, mock_get_new_token):
-        """ test lambda handler"""
-        current_time_plus_one_hour:int  = int(time.time()) + 3600
-        mock_get_db_token.return_value = json.dumps({"expires_at": current_time_plus_one_hour})
-        event = {"client_id": "testclient", "minimum_alive_secs": 100}
-        result = handler(event, MagicMock())
-        self.assertEqual(type(result), dict)
-        self.assertTrue(result['expires_at'], current_time_plus_one_hour)

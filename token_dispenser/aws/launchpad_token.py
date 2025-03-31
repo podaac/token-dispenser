@@ -41,6 +41,6 @@ def get_token(url: str, cert_file: str):
         json_data['created_at'] = current_time
         return json_data
 
-    logger.info("launchpad /gettoken call failed with code {response.status_code}")
+    logger.error("launchpad /gettoken call failed with code {response.status_code}")
     response.raise_for_status()
-    return None
+

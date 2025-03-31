@@ -27,7 +27,6 @@ def initialize_logger(log_level=logging.INFO, client_id='N/A') -> LoggerAdapter:
     global _logger_instance
     print('Initializing logger_config')
     if _logger_instance is None:
-        print('Entering logger while it is NONE')
         # Create the logger only if it hasn't been created yet
         logger = logging.getLogger("TDS_Logger")
         logger.propagate = False
@@ -47,7 +46,6 @@ def initialize_logger(log_level=logging.INFO, client_id='N/A') -> LoggerAdapter:
         for handler in _logger_instance.logger.handlers:
             handler.setLevel(log_level)
         _logger_instance.extra['client_id'] = client_id
-        print(f"Updated logger: client_id={client_id}, log_level={logging.getLevelName(log_level)}")
     return _logger_instance
 
 
