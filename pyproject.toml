@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "token-dispenser"
+version = "1.0.0"
+description = ""
+authors = ["IandA <podaac-ia@jpl.nasa.gov>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+boto3 = "^1.37.9"
+requests = "2.32.3"
+cryptography = "^44.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "8.3.4"
+flake8 = "^7.1.2"
+pylint = "^2.12.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

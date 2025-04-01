@@ -1,0 +1,13 @@
+{
+  "authlevel" : 25,
+  "cookiename" : "SMSESSION",
+  "session_idletimeout" : 3600,
+  "session_maxtimeout" : 3600,
+  "sm_token" : "EJ3waHZVwqBOtrZkCl9PqxwShxWnlTeg==",
+  "ssozone" : "SM",
+  "status" : "success",
+  "upn" : "svgspodaac@ndc.nasa.gov",
+  "userdn" : "CN=svgspodaac,OU=Services,OU=Administrators,DC=ndc,DC=nasa,DC=gov",
+  "expires_at": 173500,
+  "created_at": 169900
+}
