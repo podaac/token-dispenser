@@ -13,6 +13,4 @@ resource "aws_dynamodb_table" "launchpad_token_dispenser_cache_table" {
     attribute_name = "time_to_live"
     enabled        = true
   }
-
-  tags = local.default_tags
 }
