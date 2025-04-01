@@ -3,12 +3,9 @@ This module accesses the /gettoken endpoint from launchpad application to obtain
 Launchpad Token
 """
 import json
-from tempfile import NamedTemporaryFile
 import time
 import requests
 from token_dispenser.logging_config import shared_logger
-
-cached_cert_file: NamedTemporaryFile = None
 
 
 def get_token(url: str, cert_file: str):
