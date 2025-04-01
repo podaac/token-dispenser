@@ -25,7 +25,6 @@ class CustomLoggerAdapter(LoggerAdapter):
 
 def initialize_logger(log_level=logging.INFO, client_id='N/A') -> LoggerAdapter:
     global _logger_instance
-    print('Initializing logger_config')
     if _logger_instance is None:
         # Create the logger only if it hasn't been created yet
         logger = logging.getLogger("TDS_Logger")
