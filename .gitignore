@@ -1,5 +1,8 @@
+.DS_Store
 .idea
 .terraform*
 __pycache__
 dist
-
+!example.tfvars
+/terraform/backends/
+/terraform/tfvars/
