@@ -2,7 +2,8 @@
 .idea
 .terraform*
 __pycache__
-dist
+/build/
+/dist/
 !example.tfvars
 /terraform/backends/
 /terraform/tfvars/

@@ -2,9 +2,13 @@
 set -eo pipefail
 project_name='token-dispenser'
 poetry build
+poetry run pip install \
+  --upgrade \
+  -t build \
+  --platform manylinux2014_x86_64 \
+  --implementation cp \
+  --only-binary=:all: \
+  dist/*.whl
 
-# Docker doesn't like relative paths on volumes
-dist_path=$(realpath dist)
-
-docker build -t token-dispenser-build build/
-docker run --volume $dist_path:/dist token-dispenser-build
+cd build
+zip -r ../dist/token-dispenser_lambda.zip . -x '*.pyc'
