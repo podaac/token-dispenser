@@ -6,3 +6,4 @@ dist
 !example.tfvars
 /terraform/backends/
 /terraform/tfvars/
+*.tfplan
