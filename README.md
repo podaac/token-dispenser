@@ -207,7 +207,7 @@ Additional options accepted for the `terraform apply` command can be appended at
 the end of the apply.sh script. For example:
 
 ```bash
-./bin/apply.sh podaac-sit-cumulus -var-file=tfvars/additional_options.tfvars
+./bin/deploy.sh podaac-sit-cumulus -var-file=tfvars/additional_options.tfvars
 ```
 
 # Build software
