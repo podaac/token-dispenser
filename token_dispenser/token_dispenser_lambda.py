@@ -13,7 +13,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
 from token_dispenser.aws.s3 import download_s3_file
 from token_dispenser.aws.secret_manager import get_secret_value
-from token_dispenser.aws.launchpad_token import get_token
+from token_dispenser.launchpad_token import get_token
 import token_dispenser.configuration as config
 from token_dispenser.repository.token_repo import put_token, get_token_by_client_id
 from token_dispenser.logging_config import initialize_logger, shared_logger
