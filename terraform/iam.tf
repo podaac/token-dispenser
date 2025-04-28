@@ -88,3 +88,30 @@ data "aws_iam_policy_document" "launchpad_token_dispenser_lambda_processing_poli
   role   = aws_iam_role.launchpad_token_dispenser_lambda_role.id
   policy = data.aws_iam_policy_document.launchpad_token_dispenser_lambda_processing_policy.json
 }
+
+data "aws_iam_policy_document" "token_dispenser_minimum_access" {
+  statement {
+    sid = "AllowSSMParameterReadOnly"
+    actions = [
+      "ssm:GetParameter*"
+    ]
+    resources = [
+      "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/service/token-dispenser"
+    ]
+  }
+
+  statement {
+    sid = "AllowLambdaExecution"
+    actions = [
+      "lambda:Invoke*"
+    ]
+    resources = [
+      aws_lambda_function.launchpad_token_dispenser_lambda.arn
+    ]
+  }
+}
+
+resource "aws_iam_policy" "token_dispenser_minimum_access" {
+  name = "${local.prefix}-TokenDispenserMinimumAccess"
+  policy = data.aws_iam_policy_document.token_dispenser_minimum_access.minified_json
+}

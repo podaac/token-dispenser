@@ -13,7 +13,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
 from token_dispenser.aws.s3 import download_s3_file
 from token_dispenser.aws.secret_manager import get_secret_value
-from token_dispenser.aws.launchpad_token import get_token
+from token_dispenser.launchpad_token import get_token
 import token_dispenser.configuration as config
 from token_dispenser.repository.token_repo import put_token, get_token_by_client_id
 from token_dispenser.logging_config import initialize_logger, shared_logger
@@ -175,27 +175,23 @@ def handler(event, context):
     """
     client_id = event.get('client_id')
     if not client_id or client_id.strip() == "":
-        return {
-            "statusCode": 400,
-            "body": {"error": "client_id is a required field"}
-        }
+        raise RuntimeError('client_id is a required field')
+
     if not is_client_id_valid(client_id):
-        return {
-            "statusCode": 400,
-            "body": {"error": "Invalid client_id. Client IDs must be alphanumeric and"
-                              " between 3 and 32 characters in length."}
-        }
+        raise RuntimeError(
+            'Invalid client_id. Client IDs must be alphanumeric and between 3 '
+            'and 32 characters in length.'
+        )
+
     # if user passed in a non-integer minimum_alive_secs, this line will error out
     minimum_alive_secs = config.MINIMUM_ALIVE_SECS if event.get('minimum_alive_secs') is None \
         else int(event.get('minimum_alive_secs'))
     # client_id must be alphanumeric
     if not is_minimum_alive_secs_valid(minimum_alive_secs):
-        return {
-            "statusCode": 422,
-            "body": {"error": f"minimum_alive_secs, if provided, "
-                              f"must be numeric and smaller than or equal to "
-                              f"{config.MAX_REQUESTED_ALIVE_SECS} secs"}
-        }
+        raise RuntimeError(
+            f'minimum_alive_secs, if provided, must be numeric and smaller than '
+            f'or equal to {config.MAX_REQUESTED_ALIVE_SECS} secs'
+        )
 
     # Reconfigure the logger with the new log level
     logger = initialize_logger(log_level, client_id=client_id)

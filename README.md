@@ -192,14 +192,22 @@ launchpad_pfx_file_s3_key="my-prefix/crypto/launchpad.pfx"
 
 ## Terraform based Deployment Command Examples
 Assuming build artifact is downloaded and placed in $PROJECT_ROOT/dist/token-dispenser_lambda.zip
-Tested with Terraform release 1.10.4. Example below assumes terraform executable file is named terraform
-```aiignore
+
+Tested with Terraform release 1.10.4.
+
+```bash
+cd terraform
 export AWS_SHARED_CREDENTIALS_FILE=~/.aws/credentials
 export AWS_PROFILE=your-profile-name
 export AWS_REGION=us-west-2
-terraform init --backend-config=backends/sndbx.tf -reconfigure -backend-config="profile=my-profile"
-terraform plan -var-file=tfvars/sndbx.tfvars -var="credentials=~/.aws/credentials" -var="profile=my-profile"
-terraform apply -var-file=tfvars/sndbx.tfvars -auto-approve -var="credentials=~/.aws/credentials" -var="profile=my-profile"
+./bin/apply.sh [venue]
+```
+
+Additional options accepted for the `terraform apply` command can be appended at
+the end of the apply.sh script. For example:
+
+```bash
+./bin/deploy.sh podaac-sit-cumulus -var-file=tfvars/additional_options.tfvars
 ```
 
 # Build software
