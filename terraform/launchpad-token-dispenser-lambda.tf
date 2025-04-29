@@ -67,10 +67,10 @@ resource "aws_iam_role" "tds_cloudtrail_to_cloudwatch_role" {
   })
 }
 
-# IAM Policy for CloudTrail to write to CloudWatch Logs
-resource "aws_iam_policy" "tds_cloudtrail_to_cloudwatch_policy" {
-  name        = "${var.prefix}-cloudtrail-to-cloudwatch-policy"
-  description = "Policy for CloudTrail to write logs to CloudWatch Logs"
+# Inline IAM Policy for CloudTrail to write to CloudWatch Logs
+resource "aws_iam_role_policy" "tds_cloudtrail_to_cloudwatch_policy" {
+  name = "${var.prefix}-cloudtrail-to-cloudwatch-policy"
+  role = aws_iam_role.tds_cloudtrail_to_cloudwatch_role.name
 
   policy = jsonencode({
     Version = "2012-10-17",
@@ -89,12 +89,6 @@ resource "aws_iam_policy" "tds_cloudtrail_to_cloudwatch_policy" {
   })
 }
 
-# Attach the policy to the role
-resource "aws_iam_role_policy_attachment" "tds_cloudtrail_to_cloudwatch_attachment" {
-  role       = aws_iam_role.tds_cloudtrail_to_cloudwatch_role.name
-  policy_arn = aws_iam_policy.tds_cloudtrail_to_cloudwatch_policy.arn
-}
-
 resource "aws_cloudtrail" "launchpad_token_dispenser_trail" {
   depends_on = [ aws_cloudwatch_log_group.tds_cloudtrail_log_group ]
   name                          = "${var.prefix}-launchpad-token-dispenser-trail"
@@ -109,7 +103,6 @@ resource "aws_cloudtrail" "launchpad_token_dispenser_trail" {
 
   event_selector {
     read_write_type           = "All"
-    include_management_events = false
 
     data_resource {
       type   = "AWS::Lambda::Function"
