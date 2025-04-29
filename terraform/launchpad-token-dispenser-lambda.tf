@@ -116,7 +116,6 @@ resource "aws_cloudtrail" "launchpad_token_dispenser_trail" {
 
     data_resource {
       type   = "AWS::Lambda::Function"
-      # values = ["arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function/${aws_lambda_function.launchpad_token_dispenser_lambda.function_name}"]
       values = [aws_lambda_function.launchpad_token_dispenser_lambda.arn]
     } 
   }
