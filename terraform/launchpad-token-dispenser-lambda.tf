@@ -45,13 +45,11 @@ resource "aws_ssm_parameter" "launchpad_token_dispenser_lambda_arn" {
   value = aws_lambda_function.launchpad_token_dispenser_lambda.arn
 }
 
-# CloudWatch Log Group for CloudTrail logs
 resource "aws_cloudwatch_log_group" "tds_cloudtrail_log_group" {
   name              = "/aws/cloudtrail/${var.prefix}-launchpad-token-dispenser"
   retention_in_days = var.log_retention_days
 }
 
-# IAM Role for CloudTrail to write to CloudWatch Logs
 resource "aws_iam_role" "tds_cloudtrail_to_cloudwatch_role" {
   name = "${var.prefix}-cloudtrail-to-cloudwatch-role"
 
@@ -97,7 +95,6 @@ resource "aws_iam_role_policy_attachment" "tds_cloudtrail_to_cloudwatch_attachme
   policy_arn = aws_iam_policy.tds_cloudtrail_to_cloudwatch_policy.arn
 }
 
-# CloudTrail for monitoring Lambda API activity
 resource "aws_cloudtrail" "launchpad_token_dispenser_trail" {
   depends_on = [ aws_cloudwatch_log_group.tds_cloudtrail_log_group ]
   name                          = "${var.prefix}-launchpad-token-dispenser-trail"
@@ -106,7 +103,7 @@ resource "aws_cloudtrail" "launchpad_token_dispenser_trail" {
   is_multi_region_trail         = true
   enable_logging                = true
 
-  # Use CloudWatch Logs for CloudTrail
+  # Bind cloudtrail to the CloudWatch Logs group
   cloud_watch_logs_group_arn = "${aws_cloudwatch_log_group.tds_cloudtrail_log_group.arn}:*"
   cloud_watch_logs_role_arn  = aws_iam_role.tds_cloudtrail_to_cloudwatch_role.arn
 
@@ -132,7 +129,6 @@ resource "aws_s3_bucket" "cloudtrail_bucket" {
     enabled = false
   }
 
-  # Prevent accidental deletion of the bucket
   lifecycle {
     prevent_destroy = true
   }
