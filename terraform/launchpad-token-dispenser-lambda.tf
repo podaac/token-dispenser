@@ -46,13 +46,13 @@ resource "aws_ssm_parameter" "launchpad_token_dispenser_lambda_arn" {
 }
 
 # CloudWatch Log Group for CloudTrail logs
-resource "aws_cloudwatch_log_group" "cloudtrail_log_group" {
+resource "aws_cloudwatch_log_group" "tds_cloudtrail_log_group" {
   name              = "/aws/cloudtrail/${var.prefix}-launchpad-token-dispenser"
   retention_in_days = var.log_retention_days
 }
 
 # IAM Role for CloudTrail to write to CloudWatch Logs
-resource "aws_iam_role" "cloudtrail_to_cloudwatch_role" {
+resource "aws_iam_role" "tds_cloudtrail_to_cloudwatch_role" {
   name = "${var.prefix}-cloudtrail-to-cloudwatch-role"
 
   assume_role_policy = jsonencode({
@@ -70,7 +70,7 @@ resource "aws_iam_role" "cloudtrail_to_cloudwatch_role" {
 }
 
 # IAM Policy for CloudTrail to write to CloudWatch Logs
-resource "aws_iam_policy" "cloudtrail_to_cloudwatch_policy" {
+resource "aws_iam_policy" "tds_cloudtrail_to_cloudwatch_policy" {
   name        = "${var.prefix}-cloudtrail-to-cloudwatch-policy"
   description = "Policy for CloudTrail to write logs to CloudWatch Logs"
 
@@ -84,7 +84,7 @@ resource "aws_iam_policy" "cloudtrail_to_cloudwatch_policy" {
           "logs:PutLogEvents"
         ],
         Resource = [
-          "${aws_cloudwatch_log_group.cloudtrail_log_group.arn}:*"
+          "${aws_cloudwatch_log_group.tds_cloudtrail_log_group.arn}:*"
         ]
       }
     ]
@@ -92,14 +92,14 @@ resource "aws_iam_policy" "cloudtrail_to_cloudwatch_policy" {
 }
 
 # Attach the policy to the role
-resource "aws_iam_role_policy_attachment" "cloudtrail_to_cloudwatch_attachment" {
-  role       = aws_iam_role.cloudtrail_to_cloudwatch_role.name
-  policy_arn = aws_iam_policy.cloudtrail_to_cloudwatch_policy.arn
+resource "aws_iam_role_policy_attachment" "tds_cloudtrail_to_cloudwatch_attachment" {
+  role       = aws_iam_role.tds_cloudtrail_to_cloudwatch_role.name
+  policy_arn = aws_iam_policy.tds_cloudtrail_to_cloudwatch_policy.arn
 }
 
 # CloudTrail for monitoring Lambda API activity
 resource "aws_cloudtrail" "launchpad_token_dispenser_trail" {
-  depends_on = [ aws_cloudwatch_log_group.cloudtrail_log_group ]
+  depends_on = [ aws_cloudwatch_log_group.tds_cloudtrail_log_group ]
   name                          = "${var.prefix}-launchpad-token-dispenser-trail"
   s3_bucket_name                = aws_s3_bucket.cloudtrail_bucket.id
   include_global_service_events = true
@@ -107,33 +107,27 @@ resource "aws_cloudtrail" "launchpad_token_dispenser_trail" {
   enable_logging                = true
 
   # Use CloudWatch Logs for CloudTrail
-  cloud_watch_logs_group_arn = aws_cloudwatch_log_group.cloudtrail_log_group.arn
-  cloud_watch_logs_role_arn  = aws_iam_role.cloudtrail_to_cloudwatch_role.arn
+  cloud_watch_logs_group_arn = "${aws_cloudwatch_log_group.tds_cloudtrail_log_group.arn}:*"
+  cloud_watch_logs_role_arn  = aws_iam_role.tds_cloudtrail_to_cloudwatch_role.arn
 
   event_selector {
     read_write_type           = "All"
-    include_management_events = true
+    include_management_events = false
 
     data_resource {
       type   = "AWS::Lambda::Function"
-      values = ["arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function/${aws_lambda_function.launchpad_token_dispenser_lambda.function_name}"]
-    }
+      # values = ["arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function/${aws_lambda_function.launchpad_token_dispenser_lambda.function_name}"]
+      values = [aws_lambda_function.launchpad_token_dispenser_lambda.arn]
+    } 
   }
 }
+
 
 # S3 bucket for CloudTrail logs
 resource "aws_s3_bucket" "cloudtrail_bucket" {
   bucket = "${var.prefix}-cloudtrail-logs"
 
   acl = "private"
-
-  # server_side_encryption_configuration {
-  #   rule {
-  #     apply_server_side_encryption_by_default {
-  #       sse_algorithm = "AES256"
-  #     }
-  #   }
-  # }
 
   versioning {
     enabled = false
@@ -153,4 +147,38 @@ resource "aws_s3_bucket" "cloudtrail_bucket" {
       days = 7
     }
   }
+}
+
+# S3 bucket policy for CloudTrail
+resource "aws_s3_bucket_policy" "tds_cloudtrail_bucket_policy" {
+  bucket = aws_s3_bucket.cloudtrail_bucket.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid: "AWSCloudTrailWrite20150309",
+        Effect = "Allow",
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        },
+        Action = "s3:GetBucketAcl",
+        Resource = "arn:aws:s3:::${aws_s3_bucket.cloudtrail_bucket.id}"
+      },
+      {
+        Sid: "AWSCloudTrailWrite",
+        Effect = "Allow",
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        },
+        Action = "s3:PutObject",
+        Resource = "arn:aws:s3:::${aws_s3_bucket.cloudtrail_bucket.id}/AWSLogs/${data.aws_caller_identity.current.account_id}/*",
+        Condition = {
+          StringEquals = {
+            "s3:x-amz-acl" = "bucket-owner-full-control"
+          }
+        }
+      }
+    ]
+  })
 }
