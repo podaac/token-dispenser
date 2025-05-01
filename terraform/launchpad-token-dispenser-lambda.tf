@@ -90,7 +90,6 @@ resource "aws_iam_role_policy" "tds_cloudtrail_to_cloudwatch_policy" {
 }
 
 resource "aws_cloudtrail" "launchpad_token_dispenser_trail" {
-  depends_on = [ aws_cloudwatch_log_group.tds_cloudtrail_log_group ]
   name                          = "${var.prefix}-launchpad-token-dispenser-trail"
   s3_bucket_name                = aws_s3_bucket.cloudtrail_bucket.id
   include_global_service_events = true
@@ -101,26 +100,20 @@ resource "aws_cloudtrail" "launchpad_token_dispenser_trail" {
   cloud_watch_logs_group_arn = "${aws_cloudwatch_log_group.tds_cloudtrail_log_group.arn}:*"
   cloud_watch_logs_role_arn  = aws_iam_role.tds_cloudtrail_to_cloudwatch_role.arn
 
+
   event_selector {
     read_write_type           = "All"
-
+    include_management_events = true
     data_resource {
       type   = "AWS::Lambda::Function"
       values = [aws_lambda_function.launchpad_token_dispenser_lambda.arn]
-    } 
+    }
   }
 }
-
 
 # S3 bucket for CloudTrail logs
 resource "aws_s3_bucket" "cloudtrail_bucket" {
   bucket = "${var.prefix}-cloudtrail-logs"
-
-  acl = "private"
-
-  versioning {
-    enabled = false
-  }
 
   lifecycle {
     prevent_destroy = true
