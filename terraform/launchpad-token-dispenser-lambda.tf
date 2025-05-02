@@ -103,7 +103,7 @@ resource "aws_cloudtrail" "launchpad_token_dispenser_trail" {
 
   event_selector {
     read_write_type           = "All"
-    include_management_events = true
+    include_management_events = false
     data_resource {
       type   = "AWS::Lambda::Function"
       values = [aws_lambda_function.launchpad_token_dispenser_lambda.arn]
