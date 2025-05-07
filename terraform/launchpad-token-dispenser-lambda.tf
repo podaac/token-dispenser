@@ -123,7 +123,7 @@ resource "aws_s3_bucket" "cloudtrail_bucket" {
   bucket = "${var.prefix}-cloudtrail-logs-${random_string.cloudtrail_bucket_suffix.result}"
 
   lifecycle {
-    prevent_destroy = false
+    prevent_destroy = true
   }
 
   # Add lifecycle rule to expire objects after 7 days
