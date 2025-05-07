@@ -111,12 +111,19 @@ resource "aws_cloudtrail" "launchpad_token_dispenser_trail" {
   }
 }
 
+# Generate a random string to ensure bucket name uniqueness
+resource "random_string" "cloudtrail_bucket_suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
 # S3 bucket for CloudTrail logs
 resource "aws_s3_bucket" "cloudtrail_bucket" {
-  bucket = "${var.prefix}-cloudtrail-logs"
+  bucket = "${var.prefix}-cloudtrail-logs-${random_string.cloudtrail_bucket_suffix.result}"
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
 
   # Add lifecycle rule to expire objects after 7 days
