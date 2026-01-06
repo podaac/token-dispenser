@@ -208,6 +208,8 @@ def get_edl_token(edl_user: str, edl_pass: str, edl_env: str) -> str:
                 new_token["expiration_date"], "%m/%d/%Y"
             )
             valid_tokens.insert(0, new_token)
+            
+            put_token(edl_user, json.dumps(new_token), 120)  # 120 seconds cache in DynamoDB
 
     EDL_USER_TOKEN = next(iter(valid_tokens))
     return EDL_USER_TOKEN
