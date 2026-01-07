@@ -134,23 +134,23 @@ def get_new_token(client_id: str):
         raise ex
 
 
-# from bignbit
 def get_edl_token(edl_user: str, edl_pass: str, edl_env: str) -> str:
     """
-    Get a valid user token for the given user
+    Get a valid user token for the given user.
 
     Parameters
     ----------
-    edl_user
-      EDL username
-    edl_pass
-      EDL password for user
-    edl_env
-      EDL environment to generate token in
+    edl_user : str
+        EDL username.
+    edl_pass : str
+        EDL password for the user.
+    edl_env : str
+        EDL environment in which to generate the token.
+
     Returns
     -------
     str
-      The token that can be used to query CMR
+        The token that can be used to query CMR.
     """
     global EDL_USER_TOKEN  # pylint: disable=W0603
     if EDL_USER_TOKEN and datetime.now() < EDL_USER_TOKEN["expiration_date"]:
@@ -208,8 +208,12 @@ def get_edl_token(edl_user: str, edl_pass: str, edl_env: str) -> str:
                 new_token["expiration_date"], "%m/%d/%Y"
             )
             valid_tokens.insert(0, new_token)
-            
-            put_token(edl_user, json.dumps(new_token), 120)  # 120 seconds cache in DynamoDB
+
+            # db line expires in 120 seconds from now (give or take a few days)
+            epoch_plus_120 = int(time.time()) + 120
+            new_token["expires_at"] = epoch_plus_120
+
+            put_token(edl_user, json.dumps(new_token), int(new_token['expires_at']))
 
     EDL_USER_TOKEN = next(iter(valid_tokens))
     return EDL_USER_TOKEN
