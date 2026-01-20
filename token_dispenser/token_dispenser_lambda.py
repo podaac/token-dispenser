@@ -159,6 +159,7 @@ def get_edl_token(edl_user: str, edl_pass: str, edl_env: str) -> str:
     urs_get_tokens_url = f'https://{"uat." if edl_env == "UAT" else ""}urs.earthdata.nasa.gov/api/users/tokens'
     urs_revoke_token_url = f'https://{"uat." if edl_env == "UAT" else ""}urs.earthdata.nasa.gov/api/users/revoke_token'
     urs_create_token_url = f'https://{"uat." if edl_env == "UAT" else ""}urs.earthdata.nasa.gov/api/users/token'
+    urs_update_token_url = f'https://{"uat." if edl_env == "UAT" else ""}urs.earthdata.nasa.gov/api/users/find_or_create_token'
 
     with requests.Session() as session:
         session.auth = (edl_user, edl_pass)
@@ -196,6 +197,23 @@ def get_edl_token(edl_user: str, edl_pass: str, edl_env: str) -> str:
             revoke_token_response = session.post(revoke_token_request.url)
             revoke_token_response.raise_for_status()
 
+        # if there is a valid token and its expiration date is within 24 hours, regenerate it
+        if len(valid_tokens) == 1:
+            time_difference = valid_tokens[0]["expiration_date"] - datetime.now()
+            if time_difference.total_seconds() < 86400:
+                update_token_request = session.request(
+                    "post", urs_update_token_url, timeout=10
+                )
+                update_token_response = session.post(update_token_request.url)
+                update_token_response.raise_for_status()
+
+                new_token = update_token_response.json()
+                new_token["expiration_date"] = datetime.strptime(
+                    new_token["expiration_date"], "%m/%d/%Y"
+                )
+            else:
+                new_token = valid_tokens[0]
+
         # If there are no valid tokens, need to create one
         if len(valid_tokens) == 0:
             create_token_request = session.request(
@@ -213,7 +231,8 @@ def get_edl_token(edl_user: str, edl_pass: str, edl_env: str) -> str:
             epoch_plus_120 = int(time.time()) + 120
             new_token["expires_at"] = epoch_plus_120
 
-            put_token(edl_user, json.dumps(new_token), int(new_token['expires_at']))
+        # push the token to the DynamicDB for future use
+        put_token(edl_user, json.dumps(new_token), int(new_token['expires_at']))
 
     EDL_USER_TOKEN = next(iter(valid_tokens))
     return EDL_USER_TOKEN
