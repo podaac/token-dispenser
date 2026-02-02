@@ -211,6 +211,7 @@ def get_edl_token(edl_user: str, edl_pass: str, edl_env: str) -> str:
                 new_token["expiration_date"] = datetime.strptime(
                     new_token["expiration_date"], "%m/%d/%Y"
                 )
+                new_token["expires_at"] = int(new_token["expiration_date"].timestamp())                
             else:
                 new_token = valid_tokens[0]
 
@@ -225,11 +226,8 @@ def get_edl_token(edl_user: str, edl_pass: str, edl_env: str) -> str:
             new_token["expiration_date"] = datetime.strptime(
                 new_token["expiration_date"], "%m/%d/%Y"
             )
+            new_token["expires_at"] = int(new_token["expiration_date"].timestamp())            
             valid_tokens.insert(0, new_token)
-
-            # db line expires in 120 seconds from now (give or take a few days)
-            epoch_plus_120 = int(time.time()) + 120
-            new_token["expires_at"] = epoch_plus_120
 
         # push the token to the DynamicDB for future use
         put_token(edl_user, json.dumps(new_token), int(new_token['expires_at']))
