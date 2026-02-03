@@ -2,12 +2,17 @@
 This module contains the main lambda functionality. the def handler(event, context):
 is the AWS lambda entry point
 """
+
+# pylint: disable=import-error
+
 import logging
 import json
 import re
 import tempfile
 import time
 from tempfile import NamedTemporaryFile
+from datetime import datetime
+import requests
 from cryptography.hazmat.primitives.serialization.pkcs12 import load_key_and_certificates
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
@@ -25,6 +30,8 @@ cached_cert_file: NamedTemporaryFile = None
 temp_dir = tempfile.TemporaryDirectory()
 # Set the logging level dynamically
 log_level = getattr(logging, config.LOG_LEVEL)
+
+EDL_USER_TOKEN = {}  # pylint: disable=W0603
 
 
 def decode_pkcs12(p12_file_path, password: str):
@@ -127,6 +134,108 @@ def get_new_token(client_id: str):
         raise ex
 
 
+def get_edl_token(edl_user: str, edl_pass: str, edl_env: str) -> str:
+    """
+    Get a valid user token for the given user.
+
+    Parameters
+    ----------
+    edl_user : str
+        EDL username.
+    edl_pass : str
+        EDL password for the user.
+    edl_env : str
+        EDL environment in which to generate the token.
+
+    Returns
+    -------
+    str
+        The token that can be used to query CMR.
+    """
+    global EDL_USER_TOKEN  # pylint: disable=W0603
+    if EDL_USER_TOKEN and datetime.now() < EDL_USER_TOKEN["expiration_date"]:
+        return EDL_USER_TOKEN
+
+    urs_get_tokens_url = f'https://{"uat." if edl_env == "UAT" else ""}urs.earthdata.nasa.gov/api/users/tokens'
+    urs_revoke_token_url = f'https://{"uat." if edl_env == "UAT" else ""}urs.earthdata.nasa.gov/api/users/revoke_token'
+    urs_create_token_url = f'https://{"uat." if edl_env == "UAT" else ""}urs.earthdata.nasa.gov/api/users/token'
+    urs_update_token_url = f'https://{"uat." if edl_env == "UAT" else ""}urs.earthdata.nasa.gov/api/users/find_or_create_token'
+
+    with requests.Session() as session:
+        session.auth = (edl_user, edl_pass)
+
+        # Get existing user tokens
+        get_tokens_request = session.request("get", urs_get_tokens_url)
+        get_tokens_response = session.get(get_tokens_request.url, timeout=10)
+        get_tokens_response.raise_for_status()
+        tokens = get_tokens_response.json()
+
+        # Filter expired tokens
+        tokens = [
+            {
+                "access_token": t["access_token"],
+                "expiration_date": datetime.strptime(t["expiration_date"], "%m/%d/%Y"),
+            }
+            for t in tokens
+        ]
+        valid_tokens = list(
+            filter(lambda t: datetime.now() < t["expiration_date"], tokens)
+        )
+        expired_tokens = list(
+            filter(lambda t: datetime.now() >= t["expiration_date"], tokens)
+        )
+
+        # If there are no valid tokens and two expired tokens, need to revoke one of the expired
+        # tokens
+        if len(valid_tokens) == 0 and len(expired_tokens) == 2:
+            revoke_token_request = session.request(
+                "post",
+                urs_revoke_token_url,
+                params={"token": next(iter(expired_tokens))["access_token"]},
+                timeout=10,
+            )
+            revoke_token_response = session.post(revoke_token_request.url)
+            revoke_token_response.raise_for_status()
+
+        # if there is a valid token and its expiration date is within 24 hours, regenerate it
+        if len(valid_tokens) == 1:
+            time_difference = valid_tokens[0]["expiration_date"] - datetime.now()
+            if time_difference.total_seconds() < 86400:
+                update_token_request = session.request(
+                    "post", urs_update_token_url, timeout=10
+                )
+                update_token_response = session.post(update_token_request.url)
+                update_token_response.raise_for_status()
+
+                new_token = update_token_response.json()
+                new_token["expiration_date"] = datetime.strptime(
+                    new_token["expiration_date"], "%m/%d/%Y"
+                )
+                new_token["expires_at"] = int(new_token["expiration_date"].timestamp())                
+            else:
+                new_token = valid_tokens[0]
+
+        # If there are no valid tokens, need to create one
+        if len(valid_tokens) == 0:
+            create_token_request = session.request(
+                "post", urs_create_token_url, timeout=10
+            )
+            create_token_response = session.post(create_token_request.url)
+            create_token_response.raise_for_status()
+            new_token = create_token_response.json()
+            new_token["expiration_date"] = datetime.strptime(
+                new_token["expiration_date"], "%m/%d/%Y"
+            )
+            new_token["expires_at"] = int(new_token["expiration_date"].timestamp())            
+            valid_tokens.insert(0, new_token)
+
+        # push the token to the DynamicDB for future use
+        put_token(edl_user, json.dumps(new_token), int(new_token['expires_at']))
+
+    EDL_USER_TOKEN = next(iter(valid_tokens))
+    return EDL_USER_TOKEN
+
+
 def satisfy_minimum_alive_secs(expires_at: int, minimum_alive_secs: int) -> bool:
     """
     check if user input minimum_alive_secs expires
@@ -173,7 +282,13 @@ def handler(event, context):
     :param context:
     :return: Exception or json which represents a token structure
     """
-    client_id = event.get('client_id')
+    
+    # Determine client_id based on action(or lack thereof)
+    if event.get("action") == "edl":
+        client_id = event.get("edl_user")
+    else:
+        client_id = event.get('client_id')
+
     if not client_id or client_id.strip() == "":
         raise RuntimeError('client_id is a required field')
 
@@ -212,7 +327,11 @@ def handler(event, context):
                 return token_json
         # Not finding token from dynamoDB, hence retrieve new token,
         # save to dynamoDB and return new token
-        token_json = get_new_token(client_id)
+
+        if event.get("action") == "edl":        
+            token_json = get_edl_token(client_id, event.get("edl_pass"), event.get("cmr_env"))
+        else:
+            token_json = get_new_token(client_id)
         return token_json
 
     except Exception as ex:
