@@ -166,7 +166,7 @@ def get_edl_token(client_id: str, edl_user: str, edl_pass: str, edl_env: str) ->
         # ---- Persist token (DynamoDB) ----
         put_token(client_id, json.dumps(new_token), new_token["expires_at"])
         
-        return new_token["access_token"]
+        return new_token
 
 
 def satisfy_minimum_alive_secs(expires_at: int, minimum_alive_secs: int) -> bool:
