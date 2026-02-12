@@ -31,8 +31,6 @@ temp_dir = tempfile.TemporaryDirectory()
 # Set the logging level dynamically
 log_level = getattr(logging, config.LOG_LEVEL)
 
-EDL_USER_TOKEN = {}  # pylint: disable=W0603
-
 
 def decode_pkcs12(p12_file_path, password: str):
     """
@@ -134,106 +132,41 @@ def get_new_token(client_id: str):
         raise ex
 
 
-def get_edl_token(edl_user: str, edl_pass: str, edl_env: str) -> str:
+def get_edl_token(client_id: str, edl_user: str, edl_pass: str, edl_env: str) -> str:
     """
-    Get a valid user token for the given user.
-
-    Parameters
-    ----------
-    edl_user : str
-        EDL username.
-    edl_pass : str
-        EDL password for the user.
-    edl_env : str
-        EDL environment in which to generate the token.
-
-    Returns
-    -------
-    str
-        The token that can be used to query CMR.
+    Get a valid EDL token. Creates a new token, falling back to find_or_create_token if limit reached.
     """
-    global EDL_USER_TOKEN  # pylint: disable=W0603
-    if EDL_USER_TOKEN and datetime.now() < EDL_USER_TOKEN["expiration_date"]:
-        return EDL_USER_TOKEN
-
-    urs_get_tokens_url = f'https://{"uat." if edl_env == "UAT" else ""}urs.earthdata.nasa.gov/api/users/tokens'
-    urs_revoke_token_url = f'https://{"uat." if edl_env == "UAT" else ""}urs.earthdata.nasa.gov/api/users/revoke_token'
-    urs_create_token_url = f'https://{"uat." if edl_env == "UAT" else ""}urs.earthdata.nasa.gov/api/users/token'
-    urs_update_token_url = f'https://{"uat." if edl_env == "UAT" else ""}urs.earthdata.nasa.gov/api/users/find_or_create_token'
-
+    prefix = "uat." if edl_env.upper() == "UAT" else ""
+    base_url = f"https://{prefix}urs.earthdata.nasa.gov/api/users"
+    
     with requests.Session() as session:
         session.auth = (edl_user, edl_pass)
-
-        # Get existing user tokens
-        get_tokens_request = session.request("get", urs_get_tokens_url)
-        get_tokens_response = session.get(get_tokens_request.url, timeout=10)
-        get_tokens_response.raise_for_status()
-        tokens = get_tokens_response.json()
-
-        # Filter expired tokens
-        tokens = [
-            {
-                "access_token": t["access_token"],
-                "expiration_date": datetime.strptime(t["expiration_date"], "%m/%d/%Y"),
-            }
-            for t in tokens
-        ]
-        valid_tokens = list(
-            filter(lambda t: datetime.now() < t["expiration_date"], tokens)
-        )
-        expired_tokens = list(
-            filter(lambda t: datetime.now() >= t["expiration_date"], tokens)
-        )
-
-        # If there are no valid tokens and two expired tokens, need to revoke one of the expired
-        # tokens
-        if len(valid_tokens) == 0 and len(expired_tokens) == 2:
-            revoke_token_request = session.request(
-                "post",
-                urs_revoke_token_url,
-                params={"token": next(iter(expired_tokens))["access_token"]},
-                timeout=10,
-            )
-            revoke_token_response = session.post(revoke_token_request.url)
-            revoke_token_response.raise_for_status()
-
-        # if there is a valid token and its expiration date is within 24 hours, regenerate it
-        if len(valid_tokens) == 1:
-            time_difference = valid_tokens[0]["expiration_date"] - datetime.now()
-            if time_difference.total_seconds() < 86400:
-                update_token_request = session.request(
-                    "post", urs_update_token_url, timeout=10
-                )
-                update_token_response = session.post(update_token_request.url)
-                update_token_response.raise_for_status()
-
-                new_token = update_token_response.json()
-                new_token["expiration_date"] = datetime.strptime(
-                    new_token["expiration_date"], "%m/%d/%Y"
-                )
-                new_token["expires_at"] = int(new_token["expiration_date"].timestamp())                
+        
+        # ---- Try to create a new token ----
+        create_url = f"{base_url}/token"
+        try:
+            response = session.post(create_url, timeout=30)
+            response.raise_for_status()
+            new_token = response.json()
+            
+        except requests.exceptions.HTTPError as e:
+            # If token limit reached (403), fall back to find_or_create
+            if e.response.status_code == 403:
+                find_url = f"{base_url}/find_or_create_token"
+                response = session.post(find_url, timeout=30)
+                response.raise_for_status()
+                new_token = response.json()
             else:
-                new_token = valid_tokens[0]
-
-        # If there are no valid tokens, need to create one
-        if len(valid_tokens) == 0:
-            create_token_request = session.request(
-                "post", urs_create_token_url, timeout=10
-            )
-            create_token_response = session.post(create_token_request.url)
-            create_token_response.raise_for_status()
-            new_token = create_token_response.json()
-            new_token["expiration_date"] = datetime.strptime(
-                new_token["expiration_date"], "%m/%d/%Y"
-            )
-            new_token["expires_at"] = int(new_token["expiration_date"].timestamp())            
-            valid_tokens.insert(0, new_token)
-
-        # push the token to the DynamicDB for future use
-        put_token(edl_user, json.dumps(new_token), int(new_token['expires_at']))
-
-    EDL_USER_TOKEN = next(iter(valid_tokens))
-    return EDL_USER_TOKEN
+                raise
+        
+        # ---- Normalize expiration ----
+        exp = datetime.strptime(new_token["expiration_date"], "%m/%d/%Y")
+        new_token["expires_at"] = int(exp.timestamp())
+        
+        # ---- Persist token (DynamoDB) ----
+        put_token(client_id, json.dumps(new_token), new_token["expires_at"])
+        
+        return new_token
 
 
 def satisfy_minimum_alive_secs(expires_at: int, minimum_alive_secs: int) -> bool:
