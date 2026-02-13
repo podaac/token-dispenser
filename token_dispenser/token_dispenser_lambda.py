@@ -262,7 +262,7 @@ def handler(event, context):
         # save to dynamoDB and return new token
 
         if event.get("action") == "edl":        
-            token_json = get_edl_token(client_id, event.get("edl_pass"), event.get("cmr_env"))
+            token_json = get_edl_token(client_id, event.get("edl_user"), event.get("edl_pass"), event.get("cmr_env"))
         else:
             token_json = get_new_token(client_id)
         return token_json
