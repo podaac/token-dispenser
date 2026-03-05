@@ -216,11 +216,7 @@ def handler(event, context):
     :return: Exception or json which represents a token structure
     """
     
-    # Determine client_id based on action(or lack thereof)
-    if event.get("action") == "edl":
-        client_id = event.get("edl_user")
-    else:
-        client_id = event.get('client_id')
+    client_id = event.get('client_id')
 
     if not client_id or client_id.strip() == "":
         raise RuntimeError('client_id is a required field')
