@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "token-dispenser"
-version = "1.0.0"
+version = "2.0.0"
 description = ""
 authors = ["IandA <podaac-ia@jpl.nasa.gov>"]
 readme = "README.md"

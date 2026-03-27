@@ -2,18 +2,23 @@
 This module contains the main lambda functionality. the def handler(event, context):
 is the AWS lambda entry point
 """
+
+# pylint: disable=import-error
+
 import logging
 import json
 import re
 import tempfile
 import time
 from tempfile import NamedTemporaryFile
+from datetime import datetime
+import requests
 from cryptography.hazmat.primitives.serialization.pkcs12 import load_key_and_certificates
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
 from token_dispenser.aws.s3 import download_s3_file
 from token_dispenser.aws.secret_manager import get_secret_value
-from token_dispenser.aws.launchpad_token import get_token
+from token_dispenser.launchpad_token import get_token
 import token_dispenser.configuration as config
 from token_dispenser.repository.token_repo import put_token, get_token_by_client_id
 from token_dispenser.logging_config import initialize_logger, shared_logger
@@ -127,6 +132,43 @@ def get_new_token(client_id: str):
         raise ex
 
 
+def get_edl_token(client_id: str, edl_user: str, edl_pass: str, edl_env: str) -> str:
+    """
+    Get a valid EDL token. Creates a new token, falling back to find_or_create_token if limit reached.
+    """
+    prefix = "uat." if edl_env.upper() == "UAT" else ""
+    base_url = f"https://{prefix}urs.earthdata.nasa.gov/api/users"
+    
+    with requests.Session() as session:
+        session.auth = (edl_user, edl_pass)
+        
+        # ---- Try to create a new token ----
+        create_url = f"{base_url}/token"
+        try:
+            response = session.post(create_url, timeout=30)
+            response.raise_for_status()
+            new_token = response.json()
+            
+        except requests.exceptions.HTTPError as e:
+            # If token limit reached (403), fall back to find_or_create
+            if e.response.status_code == 403:
+                find_url = f"{base_url}/find_or_create_token"
+                response = session.post(find_url, timeout=30)
+                response.raise_for_status()
+                new_token = response.json()
+            else:
+                raise
+        
+        # ---- Normalize expiration ----
+        exp = datetime.strptime(new_token["expiration_date"], "%m/%d/%Y")
+        new_token["expires_at"] = int(exp.timestamp())
+        
+        # ---- Persist token (DynamoDB) ----
+        put_token(client_id, json.dumps(new_token), new_token["expires_at"])
+        
+        return new_token
+
+
 def satisfy_minimum_alive_secs(expires_at: int, minimum_alive_secs: int) -> bool:
     """
     check if user input minimum_alive_secs expires
@@ -173,29 +215,27 @@ def handler(event, context):
     :param context:
     :return: Exception or json which represents a token structure
     """
+    
     client_id = event.get('client_id')
+
     if not client_id or client_id.strip() == "":
-        return {
-            "statusCode": 400,
-            "body": {"error": "client_id is a required field"}
-        }
+        raise RuntimeError('client_id is a required field')
+
     if not is_client_id_valid(client_id):
-        return {
-            "statusCode": 400,
-            "body": {"error": "Invalid client_id. Client IDs must be alphanumeric and"
-                              " between 3 and 32 characters in length."}
-        }
+        raise RuntimeError(
+            'Invalid client_id. Client IDs must be alphanumeric and between 3 '
+            'and 32 characters in length.'
+        )
+
     # if user passed in a non-integer minimum_alive_secs, this line will error out
     minimum_alive_secs = config.MINIMUM_ALIVE_SECS if event.get('minimum_alive_secs') is None \
         else int(event.get('minimum_alive_secs'))
     # client_id must be alphanumeric
     if not is_minimum_alive_secs_valid(minimum_alive_secs):
-        return {
-            "statusCode": 422,
-            "body": {"error": f"minimum_alive_secs, if provided, "
-                              f"must be numeric and smaller than or equal to "
-                              f"{config.MAX_REQUESTED_ALIVE_SECS} secs"}
-        }
+        raise RuntimeError(
+            f'minimum_alive_secs, if provided, must be numeric and smaller than '
+            f'or equal to {config.MAX_REQUESTED_ALIVE_SECS} secs'
+        )
 
     # Reconfigure the logger with the new log level
     logger = initialize_logger(log_level, client_id=client_id)
@@ -216,7 +256,11 @@ def handler(event, context):
                 return token_json
         # Not finding token from dynamoDB, hence retrieve new token,
         # save to dynamoDB and return new token
-        token_json = get_new_token(client_id)
+
+        if event.get("action") == "edl":        
+            token_json = get_edl_token(client_id, event.get("edl_user"), event.get("edl_pass"), event.get("cmr_env"))
+        else:
+            token_json = get_new_token(client_id)
         return token_json
 
     except Exception as ex:

@@ -44,3 +44,129 @@ resource "aws_ssm_parameter" "launchpad_token_dispenser_lambda_arn" {
   type  = "String"
   value = aws_lambda_function.launchpad_token_dispenser_lambda.arn
 }
+
+resource "aws_cloudwatch_log_group" "tds_cloudtrail_log_group" {
+  name              = "/aws/cloudtrail/${var.prefix}-launchpad-token-dispenser"
+  retention_in_days = var.log_retention_days
+}
+
+resource "aws_iam_role" "tds_cloudtrail_to_cloudwatch_role" {
+  name = "${var.prefix}-cloudtrail-to-cloudwatch-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+# Inline IAM Policy for CloudTrail to write to CloudWatch Logs
+resource "aws_iam_role_policy" "tds_cloudtrail_to_cloudwatch_policy" {
+  name = "${var.prefix}-cloudtrail-to-cloudwatch-policy"
+  role = aws_iam_role.tds_cloudtrail_to_cloudwatch_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ],
+        Resource = [
+          "${aws_cloudwatch_log_group.tds_cloudtrail_log_group.arn}:*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_cloudtrail" "launchpad_token_dispenser_trail" {
+  name                          = "${var.prefix}-launchpad-token-dispenser-trail"
+  s3_bucket_name                = aws_s3_bucket.cloudtrail_bucket.id
+  include_global_service_events = true
+  is_multi_region_trail         = true
+  enable_logging                = true
+
+  # Bind cloudtrail to the CloudWatch Logs group
+  cloud_watch_logs_group_arn = "${aws_cloudwatch_log_group.tds_cloudtrail_log_group.arn}:*"
+  cloud_watch_logs_role_arn  = aws_iam_role.tds_cloudtrail_to_cloudwatch_role.arn
+
+
+  event_selector {
+    read_write_type           = "All"
+    include_management_events = false
+    data_resource {
+      type   = "AWS::Lambda::Function"
+      values = [aws_lambda_function.launchpad_token_dispenser_lambda.arn]
+    }
+  }
+}
+
+# Generate a random string to ensure bucket name uniqueness
+resource "random_string" "cloudtrail_bucket_suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
+# S3 bucket for CloudTrail logs
+resource "aws_s3_bucket" "cloudtrail_bucket" {
+  bucket = "${var.prefix}-cloudtrail-logs-${random_string.cloudtrail_bucket_suffix.result}"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  # Add lifecycle rule to expire objects after 7 days
+  lifecycle_rule {
+    id      = "delete-cloudtrail-logs"
+    enabled = true
+
+    expiration {
+      days = 7
+    }
+  }
+}
+
+# S3 bucket policy for CloudTrail
+resource "aws_s3_bucket_policy" "tds_cloudtrail_bucket_policy" {
+  bucket = aws_s3_bucket.cloudtrail_bucket.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid = "TDSCloudTrailGetBucketAcl",
+        Effect = "Allow",
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        },
+        Action = "s3:GetBucketAcl",
+        Resource = "${aws_s3_bucket.cloudtrail_bucket.arn}"
+      },
+      {
+        Sid = "TDSCloudTrailWrite",
+        Effect = "Allow",
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        },
+        Action = "s3:PutObject",
+        Resource = "${aws_s3_bucket.cloudtrail_bucket.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*",
+        Condition = {
+          StringEquals = {
+            "s3:x-amz-acl" = "bucket-owner-full-control"
+          }
+        }
+      }
+    ]
+  })
+}

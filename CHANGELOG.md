@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **PODAAC-6601**
   - Implement Launchpad Token Dispenser Service Lambda as a centralized (per environment) launchpad token provider
+- **PODAAC-6884**
+  - create CloudTrail for Token Dispenser Service Lambda
 ### Deprecated
 ### Removed
 ### Fixed

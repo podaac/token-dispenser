@@ -35,9 +35,10 @@ variable "minimum_alive_secs" {
   default     = 300
 }
 
+# default is 180 days in variables.tf for it makes sense to keep cloudtrail for 6 months
 variable "log_retention_days" {
   type    = number
-  default = 14
+  default = 180
 }
 
 variable "log_level" {
