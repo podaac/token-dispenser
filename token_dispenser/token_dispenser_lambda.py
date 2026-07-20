@@ -22,6 +22,7 @@ from token_dispenser.launchpad_token import get_token
 import token_dispenser.configuration as config
 from token_dispenser.repository.token_repo import put_token, get_token_by_client_id
 from token_dispenser.logging_config import initialize_logger, shared_logger
+from typing import Any, Literal
 # pylint: disable=wrong-import-order
 
 
@@ -132,9 +133,20 @@ def get_new_token(client_id: str):
         raise ex
 
 
-def get_edl_token(client_id: str, edl_user: str, edl_pass: str, edl_env: str) -> str:
+def get_edl_token(
+    client_id: str,
+    edl_user: str,
+    edl_pass: str,
+    edl_env: str,
+    return_type: Literal["raw", "json", "bearer"] = "bearer",
+) -> str | dict[str, Any] | dict[str, str]:
     """
-    Get a valid EDL token. Creates a new token, falling back to find_or_create_token if limit reached.
+    Get a valid EDL token.
+
+    return_type:
+        raw     -> access token string
+        json    -> full token JSON
+        bearer  -> {"Authorization": "Bearer <token>"}
     """
     prefix = "uat." if edl_env.upper() == "UAT" else ""
     base_url = f"https://{prefix}urs.earthdata.nasa.gov/api/users"
@@ -166,7 +178,20 @@ def get_edl_token(client_id: str, edl_user: str, edl_pass: str, edl_env: str) ->
         # ---- Persist token (DynamoDB) ----
         put_token(client_id, json.dumps(new_token), new_token["expires_at"])
         
-        return {"Authorization": f"Bearer {new_token}"}
+        if return_type == "raw":
+            return new_token["access_token"]
+
+        if return_type == "json":
+            return new_token
+
+        if return_type == "bearer":
+            return {
+                "Authorization": f"Bearer {new_token['access_token']}"
+            }
+
+        raise ValueError(
+            "return_type must be one of: 'raw', 'json', or 'bearer'"
+        )
 
 
 def satisfy_minimum_alive_secs(expires_at: int, minimum_alive_secs: int) -> bool:
