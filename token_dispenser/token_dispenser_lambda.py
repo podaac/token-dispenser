@@ -138,7 +138,7 @@ def get_edl_token(
     edl_user: str,
     edl_pass: str,
     edl_env: str,
-    return_type: Literal["raw", "json", "bearer"] = "bearer",
+    return_type: Literal["raw", "json", "bearer"] = "json",
 ) -> str | dict[str, Any] | dict[str, str]:
     """
     Get a valid EDL token.
