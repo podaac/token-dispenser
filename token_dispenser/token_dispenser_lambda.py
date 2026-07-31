@@ -286,7 +286,7 @@ def handler(event, context):
             token_json = get_edl_token(client_id,
                                        edl_user = event.get("edl_user"),
                                        edl_pass = event.get("edl_pass"),
-                                       edl_env = event.get("edl_env"),
+                                       edl_env = event.get("cmr_env"),
                                        return_type = event.get("return_type"))
         else:
             token_json = get_new_token(client_id)
