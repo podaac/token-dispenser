@@ -5,13 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.1.0]
 ### Added
 ### Changed
 - **PODAAC-6601**
   - Implement Launchpad Token Dispenser Service Lambda as a centralized (per environment) launchpad token provider
 - **PODAAC-6884**
   - create CloudTrail for Token Dispenser Service Lambda
+- **PODAAC-xxxx**
+  - support EDL token
 ### Deprecated
 ### Removed
 ### Fixed
